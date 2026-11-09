@@ -1,21 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTimelineStore } from '../state/timelineStore';
 import { secondsToSMPTE } from '../utils/timecode';
 
 export const SourceMonitor: React.FC = () => {
-  const { mediaAssets, frameRate } = useTimelineStore();
-  const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
+  const { mediaAssets, frameRate, sourceAssetId } = useTimelineStore();
   const [isPlaying, setIsPlaying] = useState(false);
   const [sourceTime, setSourceTime] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const activeAsset = mediaAssets.find((a) => a.id === activeAssetId);
+  const activeAsset = mediaAssets.find((a) => a.id === sourceAssetId) || mediaAssets[0];
+  const isVideo = activeAsset ? activeAsset.type === 'video' || /\.(mp4|mov|webm|mkv|avi)$/i.test(activeAsset.name) : false;
+  const mediaUrl = activeAsset?.url || activeAsset?.thumbnail;
 
   const handlePlayToggle = () => {
     setIsPlaying(!isPlaying);
+    if (videoRef.current) {
+      if (!isPlaying) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    }
   };
 
   const handleStep = (delta: number) => {
-    setSourceTime((prev) => Math.max(0, Math.min(activeAsset?.duration || 60, prev + delta / 60)));
+    const next = Math.max(0, Math.min(activeAsset?.duration || 60, sourceTime + delta / 60));
+    setSourceTime(next);
+    if (videoRef.current) {
+      videoRef.current.currentTime = next;
+    }
   };
 
   return (
@@ -30,16 +43,28 @@ export const SourceMonitor: React.FC = () => {
         </div>
       </div>
 
-      {/* Source Canvas / Preview (True Black) */}
-      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-        {activeAsset?.thumbnail ? (
-          <img
-            src={activeAsset.thumbnail}
-            alt={activeAsset.name}
-            className="w-full h-full object-contain"
-          />
+      {/* Source Canvas / Preview (True Black with Real Media Display) */}
+      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden p-1">
+        {activeAsset && mediaUrl ? (
+          isVideo ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              className="max-w-full max-h-full object-contain"
+              playsInline
+              onTimeUpdate={() => videoRef.current && setSourceTime(videoRef.current.currentTime)}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt={activeAsset.name}
+              className="max-w-full max-h-full object-contain select-none"
+            />
+          )
         ) : (
-          <div className="w-full h-full bg-black flex items-center justify-center" />
+          <div className="w-full h-full bg-black flex items-center justify-center text-[#555555] font-mono text-[11px]">
+            No Source Clip Selected
+          </div>
         )}
       </div>
 
@@ -72,7 +97,10 @@ export const SourceMonitor: React.FC = () => {
 
           {/* Go to In |◀ */}
           <button
-            onClick={() => setSourceTime(0)}
+            onClick={() => {
+              setSourceTime(0);
+              if (videoRef.current) videoRef.current.currentTime = 0;
+            }}
             className="hover:text-white text-[11px] px-1"
             title="Go to In (Shift+I)"
           >

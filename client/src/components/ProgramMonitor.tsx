@@ -15,54 +15,43 @@ export const ProgramMonitor: React.FC = () => {
     setInPoint,
     setOutPoint,
     clips,
+    mediaAssets,
     resolution,
   } = useTimelineStore();
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Active clip at current playhead
-  const activeVideoClip = clips.find(
-    (c) => c.type === 'video' && currentTime >= c.startTime && currentTime <= c.startTime + c.duration
+  // Active visual clip at current playhead
+  const activeClip = clips.find(
+    (c) =>
+      (c.type === 'video' || /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(c.title)) &&
+      currentTime >= c.startTime &&
+      currentTime <= c.startTime + c.duration
   );
 
-  // Render simulated frame on canvas
+  // Lookup actual mediaUrl (from clip or from mediaAssets)
+  const mediaAsset = mediaAssets.find(
+    (a) => a.name === activeClip?.title || a.id === activeClip?.id || (activeClip?.title && a.name.includes(activeClip.title))
+  );
+  const mediaUrl = activeClip?.mediaUrl || mediaAsset?.url || mediaAsset?.thumbnail;
+
+  const isVideo = activeClip ? /\.(mp4|mov|webm|mkv|avi)$/i.test(activeClip.title) : false;
+
+  // Synchronize HTML5 video element with timeline playhead
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // True Black canvas
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
-
-    if (activeVideoClip) {
-      // Simulate video gradient
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, '#1c1917');
-      gradient.addColorStop(0.5, '#292524');
-      gradient.addColorStop(1, '#44403c');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Subtle video motion simulation
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(activeVideoClip.title, width / 2, height / 2);
+    const vid = videoRef.current;
+    if (vid && activeClip && isVideo) {
+      const localTime = Math.max(0, (currentTime - activeClip.startTime) * (activeClip.speed || 1));
+      if (Math.abs(vid.currentTime - localTime) > 0.25) {
+        vid.currentTime = localTime;
+      }
+      if (isPlaying) {
+        vid.play().catch(() => {});
+      } else {
+        vid.pause();
+      }
     }
-
-    // Safe Margins Overlay
-    if (isSafeMarginsActive) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(width * 0.05, height * 0.05, width * 0.9, height * 0.9);
-      ctx.strokeRect(width * 0.1, height * 0.1, width * 0.8, height * 0.8);
-    }
-  }, [currentTime, activeVideoClip, isSafeMarginsActive, frameRate]);
+  }, [currentTime, isPlaying, activeClip, isVideo]);
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e] border-r border-[#303030] text-xs select-none overflow-hidden">
@@ -76,17 +65,42 @@ export const ProgramMonitor: React.FC = () => {
         </div>
       </div>
 
-      {/* Program Monitor Canvas Viewport (True Black) */}
-      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-        {clips.length > 0 ? (
-          <canvas
-            ref={canvasRef}
-            width={960}
-            height={540}
-            className="w-full h-full object-contain"
-          />
+      {/* Program Monitor Canvas Viewport (True Black with Real Media Display) */}
+      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden p-1">
+        {activeClip ? (
+          mediaUrl ? (
+            isVideo ? (
+              <video
+                ref={videoRef}
+                src={mediaUrl}
+                className="max-w-full max-h-full object-contain pointer-events-none"
+                playsInline
+                muted
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt={activeClip.title}
+                className="max-w-full max-h-full object-contain select-none shadow-lg"
+              />
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center p-4 bg-[#141414] border border-[#2d2d2d] rounded text-center">
+              <span className="material-symbols-outlined text-[32px] text-[#888888] mb-1">
+                image
+              </span>
+              <span className="font-mono text-white text-[12px]">{activeClip.title}</span>
+            </div>
+          )
         ) : (
           <div className="w-full h-full bg-black flex items-center justify-center" />
+        )}
+
+        {/* Safe Margins Overlay */}
+        {isSafeMarginsActive && (
+          <div className="absolute inset-4 border border-white/30 pointer-events-none flex items-center justify-center">
+            <div className="w-[90%] h-[90%] border border-white/20" />
+          </div>
         )}
       </div>
 

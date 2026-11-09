@@ -12,6 +12,7 @@ export const MediaBin: React.FC = () => {
     addMediaAsset,
     removeMediaAsset,
     clearMediaAssets,
+    setSourceAssetId,
   } = useTimelineStore();
 
   const [activeTab, setActiveTab] = useState<'project' | 'browser'>('project');
@@ -32,6 +33,7 @@ export const MediaBin: React.FC = () => {
   };
 
   const handleInsertClip = (asset: MediaAsset) => {
+    setSourceAssetId(asset.id);
     insertAssetAtPlayhead(asset.id);
     showToastBanner(`Added "${asset.name}" to sequence`);
   };

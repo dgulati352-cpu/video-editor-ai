@@ -42,6 +42,33 @@ export const App: React.FC = () => {
     showToastBanner,
   } = useTimelineStore();
 
+  // Sanitize any existing visual clips that were saved on audio tracks
+  useEffect(() => {
+    const { clips, mediaAssets } = useTimelineStore.getState();
+    const needsFix = clips.some(
+      (c) =>
+        /\.(jpg|jpeg|png|webp|gif|svg|mp4|mov|webm)$/i.test(c.title) &&
+        (c.trackId.startsWith('a') || c.type === 'audio' || !c.mediaUrl)
+    );
+    if (needsFix) {
+      const fixedClips = clips.map((c) => {
+        const isVisual = /\.(jpg|jpeg|png|webp|gif|svg|mp4|mov|webm)$/i.test(c.title);
+        if (isVisual) {
+          const asset = mediaAssets.find((a) => a.name === c.title || a.id === c.id);
+          return {
+            ...c,
+            trackId: 'v1',
+            type: 'video' as const,
+            mediaUrl: c.mediaUrl || asset?.url || asset?.thumbnail,
+            color: '#00e5ff',
+          };
+        }
+        return c;
+      });
+      useTimelineStore.setState({ clips: fixedClips });
+    }
+  }, []);
+
   // Global Keyboard Shortcuts (J-K-L, Space, I, O, C, V, M, Del, ?, etc.)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

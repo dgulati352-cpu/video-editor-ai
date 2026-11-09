@@ -52,6 +52,8 @@ interface TimelineState {
   tracks: Track[];
   clips: Clip[];
   selectedClipId: string | null;
+  sourceAssetId: string | null;
+  setSourceAssetId: (id: string | null) => void;
 
   // AI Silence Removal Pipeline
   silenceState: SilenceRemovalState;
@@ -737,6 +739,8 @@ export const useTimelineStore = create<TimelineState>()(
   tracks: INITIAL_TRACKS,
   clips: [],
   selectedClipId: null,
+  sourceAssetId: null,
+  setSourceAssetId: (id: string | null) => set({ sourceAssetId: id }),
 
   // Silence Removal Pipeline
   silenceState: {
@@ -1377,26 +1381,51 @@ export const useTimelineStore = create<TimelineState>()(
     if (!asset) return;
 
     get().pushHistorySnapshot();
-    const targetTrackId = asset.type === 'video' ? 'v1' : 'a1';
+    const isVisual =
+      asset.type === 'video' ||
+      asset.type === 'image' ||
+      /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(asset.name);
+    const targetTrackId = isVisual ? 'v1' : 'a1';
+    const clipDuration = asset.duration && asset.duration > 0 ? asset.duration : (isVisual ? 5 : 10);
+
     const newClip: Clip = {
       id: `clip-${Date.now()}`,
       trackId: targetTrackId,
       title: asset.name,
       startTime: currentTime,
-      duration: Math.min(25, asset.duration),
+      duration: Math.min(25, clipDuration),
       trimStart: 0,
-      trimEnd: Math.min(25, asset.duration),
-      color: asset.type === 'video' ? '#00e5ff' : '#10b981',
+      trimEnd: Math.min(25, clipDuration),
+      color: isVisual ? '#00e5ff' : '#10b981',
       speed: 1,
       volumeDb: 0,
-      type: asset.type === 'video' ? 'video' : 'audio',
+      type: isVisual ? 'video' : 'audio',
+      mediaUrl: asset.url || asset.thumbnail,
       hasAiAnalysis: true,
     };
 
+    // Sanitize any existing visual clips that were saved on audio track
+    const sanitizedClips = clips.map((c) => {
+      const cIsVisual = /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(c.title);
+      if (cIsVisual && (c.trackId.startsWith('a') || c.type === 'audio')) {
+        return {
+          ...c,
+          trackId: 'v1',
+          type: 'video' as const,
+          mediaUrl: c.mediaUrl || asset.url,
+        };
+      }
+      return c;
+    });
+
+    const updatedClips = [...sanitizedClips, newClip];
+    const newDuration = Math.max(get().duration, currentTime + newClip.duration);
+
     set({
-      clips: [...clips, newClip],
+      clips: updatedClips,
       selectedClipId: newClip.id,
-      duration: Math.max(get().duration, currentTime + Math.min(25, asset.duration)),
+      sourceAssetId: asset.id,
+      duration: newDuration,
     });
     get().showToastBanner(`Inserted "${asset.name}" onto ${targetTrackId.toUpperCase()} at ${currentTime.toFixed(1)}s`);
   },

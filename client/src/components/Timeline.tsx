@@ -305,7 +305,7 @@ export const Timeline: React.FC = () => {
                         <div
                           key={clip.id}
                           onMouseDown={(e) => handleClipMouseDown(e, clip)}
-                          className={`absolute top-1 bottom-1 rounded-[2px] px-2 flex items-center overflow-hidden cursor-move transition-shadow ${
+                          className={`absolute top-1 bottom-1 rounded-[2px] px-1.5 flex items-center overflow-hidden cursor-move transition-shadow ${
                             isSelected
                               ? 'border-2 border-white shadow-md'
                               : 'border border-black/40'
@@ -316,6 +316,13 @@ export const Timeline: React.FC = () => {
                             backgroundColor: clip.color || '#1473e6',
                           }}
                         >
+                          {clip.mediaUrl && (
+                            <img
+                              src={clip.mediaUrl}
+                              alt=""
+                              className="w-5 h-5 rounded-[1px] object-cover mr-1 shrink-0 pointer-events-none"
+                            />
+                          )}
                           <span className="font-semibold text-white text-[10px] truncate drop-shadow-sm">
                             {clip.title}
                           </span>
