@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTimelineStore } from '../state/timelineStore';
 import { MediaAsset } from '../types';
 import { formatDuration } from '../utils/timecode';
 
 export const MediaBin: React.FC = () => {
-  const { mediaAssets, insertAssetAtPlayhead, showToastBanner, projectName, importSampleAssets } = useTimelineStore();
+  const {
+    mediaAssets,
+    insertAssetAtPlayhead,
+    showToastBanner,
+    projectName,
+    addMediaAsset,
+    removeMediaAsset,
+    clearMediaAssets,
+  } = useTimelineStore();
+
   const [activeTab, setActiveTab] = useState<'project' | 'browser'>('project');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
   const [hoverScrubMap, setHoverScrubMap] = useState<Record<string, number>>({});
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredAssets = mediaAssets.filter((asset) => {
     return asset.name.toLowerCase().includes(search.toLowerCase());
@@ -25,12 +36,142 @@ export const MediaBin: React.FC = () => {
     showToastBanner(`Added "${asset.name}" to sequence`);
   };
 
+  // Open native local storage file picker
   const handleImportClick = () => {
-    importSampleAssets();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // Process files selected from Local Storage / Drag & Drop
+  const processFiles = async (files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi)$/i.test(file.name);
+      const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|aac|m4a|flac|ogg)$/i.test(file.name);
+      const isImage = file.type.startsWith('image/') || /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name);
+
+      const url = URL.createObjectURL(file);
+      let duration = 15;
+      let resolution = '1920×1080';
+      let fps = 30;
+      let thumbnail = '';
+
+      if (isVideo) {
+        try {
+          const vid = document.createElement('video');
+          vid.preload = 'metadata';
+          vid.src = url;
+          await new Promise((res) => {
+            vid.onloadedmetadata = () => res(true);
+            vid.onerror = () => res(false);
+            setTimeout(res, 1000);
+          });
+          duration = vid.duration || 15;
+          if (vid.videoWidth && vid.videoHeight) {
+            resolution = `${vid.videoWidth}×${vid.videoHeight}`;
+          }
+          vid.currentTime = Math.min(1, duration / 3);
+          await new Promise((res) => {
+            vid.onseeked = () => res(true);
+            setTimeout(res, 800);
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.min(320, vid.videoWidth || 320);
+          canvas.height = Math.min(180, vid.videoHeight || 180);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+            thumbnail = canvas.toDataURL('image/jpeg', 0.7);
+          }
+        } catch (e) {
+          console.warn('Video metadata parsing fallback', e);
+        }
+      } else if (isAudio) {
+        try {
+          const aud = document.createElement('audio');
+          aud.src = url;
+          await new Promise((res) => {
+            aud.onloadedmetadata = () => res(true);
+            setTimeout(res, 600);
+          });
+          duration = aud.duration || 30;
+          resolution = 'Audio Master';
+        } catch {
+          duration = 30;
+        }
+      } else if (isImage) {
+        duration = 5;
+        thumbnail = url;
+      }
+
+      const newAsset: MediaAsset = {
+        id: `local-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+        name: file.name,
+        type: isVideo ? 'video' : isAudio ? 'audio' : 'image',
+        duration,
+        resolution,
+        fps,
+        codec: file.type || 'Local Media File',
+        channels: isAudio ? 'Stereo' : 'Video Track',
+        proxyStatus: 'ready',
+        aiBadges: ['Local File'],
+        url,
+        thumbnail,
+      };
+
+      addMediaAsset(newAsset);
+    }
+
+    showToastBanner(`Imported ${files.length} file(s) from local storage`);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processFiles(e.target.files);
+    }
+  };
+
+  // Drag and Drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
+    }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] border-r border-[#303030] text-xs select-none overflow-hidden">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex flex-col h-full bg-[#1e1e1e] border-r border-[#303030] text-xs select-none overflow-hidden transition-colors ${
+        isDragging ? 'bg-[#142840] border-[#1473e6]' : ''
+      }`}
+    >
+      {/* Hidden Native File Input for Local Storage Import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="video/*,audio/*,image/*"
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+
       {/* Tab Header Bar (Project: Untitled ≡ | Media Browser) */}
       <div className="flex items-center justify-between px-2 h-7 bg-[#252525] border-b border-[#303030]">
         <div className="flex items-center gap-3">
@@ -43,7 +184,7 @@ export const MediaBin: React.FC = () => {
                 : 'text-[#999999] hover:text-white'
             }`}
           >
-            <span>Project: Untitled</span>
+            <span>Project: {projectName.replace('.prproj', '').replace('.cfs', '')}</span>
             <span className="text-[#888888] text-[10px]">≡</span>
           </button>
 
@@ -59,14 +200,28 @@ export const MediaBin: React.FC = () => {
             Media Browser
           </button>
         </div>
+
+        {/* Clear All / Trash icon if assets exist */}
+        {mediaAssets.length > 0 && (
+          <button
+            onClick={clearMediaAssets}
+            className="text-[#888888] hover:text-[#e81123] text-[11px] px-1 transition-colors"
+            title="Clear all assets from Project Bin"
+          >
+            Clear Bin
+          </button>
+        )}
       </div>
 
       {/* Subheader: Breadcrumb (📁 Untitled.prproj) */}
       <div className="px-3 py-1 bg-[#222222] border-b border-[#2d2d2d] flex items-center justify-between text-[11px] text-[#a0a0a0]">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 truncate">
           <span className="material-symbols-outlined text-[14px]">folder</span>
-          <span className="text-[#b0b0b0] font-sans">Untitled.prproj</span>
+          <span className="text-[#b0b0b0] font-sans truncate">{projectName}</span>
         </div>
+        <span className="text-[10px] text-[#777777] font-mono shrink-0">
+          {mediaAssets.length} item{mediaAssets.length === 1 ? '' : 's'}
+        </span>
       </div>
 
       {/* Search Input Bar */}
@@ -86,14 +241,14 @@ export const MediaBin: React.FC = () => {
         <button
           onClick={handleImportClick}
           className="w-6 h-6 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#999999] hover:text-white"
-          title="Import Options"
+          title="Import Media from Local Storage (Ctrl+I)"
         >
-          <span className="material-symbols-outlined text-[15px]">filter_list</span>
+          <span className="material-symbols-outlined text-[15px]">file_upload</span>
         </button>
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col justify-center">
+      <div className="flex-1 overflow-y-auto p-3 flex flex-col justify-center relative">
         {filteredAssets.length === 0 ? (
           /* Empty State Matching Real Premiere Pro Screenshot */
           <div className="flex flex-col items-center justify-center text-center my-auto py-6">
@@ -104,13 +259,14 @@ export const MediaBin: React.FC = () => {
               Add your media
             </span>
             <span className="text-[11px] text-[#888888] max-w-[200px] mb-4">
-              Drag media here or import media to begin
+              Drag media here or import from local storage to begin
             </span>
             <button
               onClick={handleImportClick}
-              className="px-4 py-1.5 rounded-[3px] bg-[#1473e6] hover:bg-[#005fb8] text-white text-[12px] font-medium transition-colors shadow-sm"
+              className="px-4 py-1.5 rounded-[3px] bg-[#1473e6] hover:bg-[#005fb8] text-white text-[12px] font-medium transition-colors shadow-sm flex items-center gap-1.5"
             >
-              Import media
+              <span className="material-symbols-outlined text-[15px]">add</span>
+              <span>Import media</span>
             </button>
           </div>
         ) : viewMode === 'grid' ? (
@@ -141,7 +297,7 @@ export const MediaBin: React.FC = () => {
                       />
                     ) : (
                       <span className="material-symbols-outlined text-[28px] text-[#555555]">
-                        movie
+                        {asset.type === 'audio' ? 'audiotrack' : 'movie'}
                       </span>
                     )}
 
@@ -151,6 +307,18 @@ export const MediaBin: React.FC = () => {
                         ? formatDuration(scrubTime)
                         : formatDuration(asset.duration)}
                     </span>
+
+                    {/* Delete hover button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeMediaAsset(asset.id);
+                      }}
+                      className="absolute top-1 right-1 w-4 h-4 rounded bg-black/70 hover:bg-[#e81123] text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all text-[10px]"
+                      title="Remove from project"
+                    >
+                      ✕
+                    </button>
                   </div>
 
                   <div className="p-1.5 flex flex-col">
@@ -171,17 +339,29 @@ export const MediaBin: React.FC = () => {
               <div
                 key={asset.id}
                 onClick={() => handleInsertClip(asset)}
-                className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#2a2a2a] cursor-pointer text-[11px] border-b border-[#2d2d2d]"
+                className="group flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#2a2a2a] cursor-pointer text-[11px] border-b border-[#2d2d2d]"
               >
                 <div className="flex items-center gap-2 truncate">
                   <span className="material-symbols-outlined text-[15px] text-[#1473e6]">
-                    movie
+                    {asset.type === 'audio' ? 'audiotrack' : 'movie'}
                   </span>
                   <span className="text-[#e1e1e1] truncate">{asset.name}</span>
                 </div>
-                <span className="text-[10px] font-mono text-[#888888]">
-                  {formatDuration(asset.duration)}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-mono text-[#888888]">
+                    {formatDuration(asset.duration)}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeMediaAsset(asset.id);
+                    }}
+                    className="text-[#888888] hover:text-[#e81123] opacity-0 group-hover:opacity-100 px-1"
+                    title="Remove from project"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -210,10 +390,11 @@ export const MediaBin: React.FC = () => {
             <span className="material-symbols-outlined text-[14px]">grid_view</span>
           </button>
           <button
+            onClick={handleImportClick}
             className="p-1 rounded text-[#888888] hover:text-white"
-            title="Freeform View"
+            title="Import from Local Storage"
           >
-            <span className="material-symbols-outlined text-[14px]">dashboard</span>
+            <span className="material-symbols-outlined text-[14px]">folder_open</span>
           </button>
         </div>
 

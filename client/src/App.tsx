@@ -39,6 +39,7 @@ export const App: React.FC = () => {
     isInspectorOpen,
     toggleKeyboardHelp,
     toggleSnapping,
+    showToastBanner,
   } = useTimelineStore();
 
   // Global Keyboard Shortcuts (J-K-L, Space, I, O, C, V, M, Del, ?, etc.)
@@ -79,6 +80,11 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         openRenderProgressModal();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        showToastBanner('Project saved to Local Storage');
         return;
       }
 

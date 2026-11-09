@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   WorkspaceLayout,
   ThemeMode,
@@ -175,6 +176,9 @@ interface TimelineState {
   quickVoiceIsolation: () => void;
   quickSocialReframe: () => void;
   insertAssetAtPlayhead: (assetId: string) => void;
+  addMediaAsset: (asset: MediaAsset) => void;
+  removeMediaAsset: (assetId: string) => void;
+  clearMediaAssets: () => void;
   createNewProject: (manifest: Partial<ProjectManifest>) => void;
   resetToNewProject: () => void;
   loadDemoProject: () => void;
@@ -703,7 +707,9 @@ const INITIAL_RECENT_PROJECTS: ProjectManifest[] = [
   },
 ];
 
-export const useTimelineStore = create<TimelineState>((set, get) => ({
+export const useTimelineStore = create<TimelineState>()(
+  persist(
+    (set, get) => ({
   // Project Info
   projectName: 'Untitled.prproj',
   projectDirectory: 'C:/Users/DHAIRYA GULATI/Documents/Adobe/Premiere Pro/26.0/Untitled',
@@ -1395,6 +1401,24 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     get().showToastBanner(`Inserted "${asset.name}" onto ${targetTrackId.toUpperCase()} at ${currentTime.toFixed(1)}s`);
   },
 
+  addMediaAsset: (asset: MediaAsset) => {
+    set((state) => ({
+      mediaAssets: [asset, ...state.mediaAssets.filter((a) => a.id !== asset.id)],
+    }));
+  },
+
+  removeMediaAsset: (assetId: string) => {
+    set((state) => ({
+      mediaAssets: state.mediaAssets.filter((a) => a.id !== assetId),
+    }));
+    get().showToastBanner('Removed asset from Project');
+  },
+
+  clearMediaAssets: () => {
+    set({ mediaAssets: [] });
+    get().showToastBanner('Cleared all assets from Project Bin');
+  },
+
   importSampleAssets: () => {
     set({ mediaAssets: INITIAL_MEDIA_ASSETS });
     get().showToastBanner('Imported 6 production media assets into Project Bin');
@@ -1561,5 +1585,26 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
     get().showToastBanner('Redo performed');
   },
-}));
+    }),
+    {
+      name: 'clipflow_studio_project_storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        projectName: state.projectName,
+        projectDirectory: state.projectDirectory,
+        frameRate: state.frameRate,
+        resolution: state.resolution,
+        colorSpace: state.colorSpace,
+        activeWorkspace: state.activeWorkspace,
+        themeMode: state.themeMode,
+        tracks: state.tracks,
+        clips: state.clips,
+        mediaAssets: state.mediaAssets,
+        colorState: state.colorState,
+        recentProjects: state.recentProjects,
+        snappingEnabled: state.snappingEnabled,
+      }),
+    }
+  )
+);
 
