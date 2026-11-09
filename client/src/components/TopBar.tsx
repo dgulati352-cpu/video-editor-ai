@@ -63,6 +63,9 @@ export const TopBar: React.FC = () => {
     isInspectorOpen,
     toggleInspector,
     toggleKeyboardHelp,
+    resetToNewProject,
+    loadDemoProject,
+    importSampleAssets,
   } = useTimelineStore();
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -92,9 +95,10 @@ export const TopBar: React.FC = () => {
         label: 'New',
         hasSubmenu: true,
         submenu: [
-          { label: 'Project...', shortcut: 'Ctrl+Alt+N', action: () => setNewProjectOpen(true) },
+          { label: 'Project...', shortcut: 'Ctrl+Alt+N', action: resetToNewProject },
           { label: 'Production...' },
           { label: 'Sequence...', shortcut: 'Ctrl+N', action: () => showToastBanner('Created New Sequence: Sequence 01') },
+          { label: 'Load Demo Sequence...', action: loadDemoProject },
           { label: 'Bin', shortcut: 'Ctrl+/' },
           { label: 'Search Bin...' },
           { type: 'divider' },
@@ -117,10 +121,10 @@ export const TopBar: React.FC = () => {
         })),
       },
       { type: 'divider' },
-      { label: 'Close', shortcut: 'Ctrl+W', action: () => setWelcomeOpen(true) },
-      { label: 'Close Project', shortcut: 'Ctrl+Shift+W', action: () => setWelcomeOpen(true) },
+      { label: 'Close', shortcut: 'Ctrl+W', action: resetToNewProject },
+      { label: 'Close Project', shortcut: 'Ctrl+Shift+W', action: resetToNewProject },
       { label: 'Close Production', disabled: true },
-      { label: 'Close All Projects', action: () => setWelcomeOpen(true) },
+      { label: 'Close All Projects', action: resetToNewProject },
       { label: 'Close All Other Projects', disabled: true },
       { label: 'Refresh All Projects', disabled: true },
       { label: 'Save', shortcut: 'Ctrl+S', action: () => showToastBanner('Project Saved: Untitled.prproj') },
@@ -136,7 +140,7 @@ export const TopBar: React.FC = () => {
       { label: 'Adobe Dynamic Link', hasSubmenu: true, disabled: true },
       { type: 'divider' },
       { label: 'Import from Media Browser', shortcut: 'Ctrl+Alt+I', disabled: true },
-      { label: 'Import...', shortcut: 'Ctrl+I', action: () => showToastBanner('Import Media: Select video/audio files') },
+      { label: 'Import...', shortcut: 'Ctrl+I', action: importSampleAssets },
       { label: 'Import Recent File', hasSubmenu: true, disabled: true },
       { label: 'Import Premiere Mobile Project', hasSubmenu: true },
       { label: 'Create in Adobe Firefly...', action: openVoiceModal },
@@ -494,7 +498,7 @@ export const TopBar: React.FC = () => {
             Pr
           </div>
           <span className="truncate tracking-tight font-sans text-[#b0b0b0]">
-            Adobe Premiere - C:\Users\DHAIRYA GULATI\Documents\Adobe\Premiere Pro\26.0\Untitled *
+            Adobe Premiere - C:\Users\DHAIRYA GULATI\Documents\Adobe\Premiere Pro\26.0\{projectName.replace('.cfs', '')} *
           </span>
         </div>
 
@@ -690,7 +694,7 @@ export const TopBar: React.FC = () => {
 
         {/* Center: Sequence / Project Title */}
         <div className="text-[12px] font-medium text-[#888888] tracking-wide select-none">
-          Untitled - Edited
+          {projectName.replace('.prproj', '').replace('.cfs', '')} - Edited
         </div>
 
         {/* Right: Workspace Selector, Quick Export, Icons, Adobe Firefly AI, Profile Avatar */}

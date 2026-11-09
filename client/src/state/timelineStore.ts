@@ -176,6 +176,9 @@ interface TimelineState {
   quickSocialReframe: () => void;
   insertAssetAtPlayhead: (assetId: string) => void;
   createNewProject: (manifest: Partial<ProjectManifest>) => void;
+  resetToNewProject: () => void;
+  loadDemoProject: () => void;
+  importSampleAssets: () => void;
 
   // Undo / Redo
   undo: () => void;
@@ -702,8 +705,8 @@ const INITIAL_RECENT_PROJECTS: ProjectManifest[] = [
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
   // Project Info
-  projectName: 'Cyberpunk_Narrative_Commercial_4K.cfs',
-  projectDirectory: 'D:/Projects/ClipFlow/Commercial_2026',
+  projectName: 'Untitled.prproj',
+  projectDirectory: 'C:/Users/DHAIRYA GULATI/Documents/Adobe/Premiere Pro/26.0/Untitled',
   frameRate: 60,
   resolution: '4K UHD (3840×2160)',
   colorSpace: 'ACEScg / Rec.709-A',
@@ -713,35 +716,35 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   // Navigation & Tools
   activeTool: 'selection',
-  currentTime: 37.05, // 00:00:37:03 on 60fps timeline
-  duration: 120, // 2 minutes sequence
+  currentTime: 0,
+  duration: 0,
   isPlaying: false,
   playbackRate: 1,
-  inPoint: 12,
-  outPoint: 74,
+  inPoint: null,
+  outPoint: null,
   timelineZoom: 45, // pixels per second
   isSafeMarginsActive: false,
-  audioPeakL: -12.4,
-  audioPeakR: -14.1,
+  audioPeakL: -60,
+  audioPeakR: -60,
 
-  // Tracks & Clips
+  // Tracks & Clips (Fresh empty project - no clips preloaded)
   tracks: INITIAL_TRACKS,
-  clips: INITIAL_CLIPS,
-  selectedClipId: 'c-v1-01',
+  clips: [],
+  selectedClipId: null,
 
   // Silence Removal Pipeline
   silenceState: {
     thresholdDb: -28,
     minPauseSec: 0.45,
-    stage: 4,
+    stage: 1,
     isAnalyzing: false,
-    isPreviewActive: true,
-    cuts: INITIAL_SILENCE_CUTS,
-    undoToken: 'TOKEN_SILENCE_PREVIEW_INIT',
+    isPreviewActive: false,
+    cuts: [],
+    undoToken: null,
   },
 
   // Interactive Transcript
-  transcript: INITIAL_TRANSCRIPT,
+  transcript: [],
   filterFillerWords: false,
 
   // Lumetri Color
@@ -783,8 +786,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     { id: 'fx-6', name: 'Gaussian Defocus Vignette', category: 'video', applied: false },
   ],
 
-  // Media Library
-  mediaAssets: INITIAL_MEDIA_ASSETS,
+  // Media Library (Fresh empty project - user imports media)
+  mediaAssets: [],
   searchQuery: '',
 
   // Export & Batch
@@ -1384,8 +1387,71 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       hasAiAnalysis: true,
     };
 
-    set({ clips: [...clips, newClip], selectedClipId: newClip.id });
+    set({
+      clips: [...clips, newClip],
+      selectedClipId: newClip.id,
+      duration: Math.max(get().duration, currentTime + Math.min(25, asset.duration)),
+    });
     get().showToastBanner(`Inserted "${asset.name}" onto ${targetTrackId.toUpperCase()} at ${currentTime.toFixed(1)}s`);
+  },
+
+  importSampleAssets: () => {
+    set({ mediaAssets: INITIAL_MEDIA_ASSETS });
+    get().showToastBanner('Imported 6 production media assets into Project Bin');
+  },
+
+  resetToNewProject: () => {
+    set({
+      projectName: 'Untitled.prproj',
+      currentTime: 0,
+      duration: 0,
+      isPlaying: false,
+      playbackRate: 1,
+      inPoint: null,
+      outPoint: null,
+      clips: [],
+      mediaAssets: [],
+      selectedClipId: null,
+      silenceState: {
+        thresholdDb: -28,
+        minPauseSec: 0.45,
+        stage: 1,
+        isAnalyzing: false,
+        isPreviewActive: false,
+        cuts: [],
+        undoToken: null,
+      },
+      transcript: [],
+      audioPeakL: -60,
+      audioPeakR: -60,
+    });
+    get().showToastBanner('Clean slate: Started fresh project (Untitled.prproj)');
+  },
+
+  loadDemoProject: () => {
+    set({
+      projectName: 'Cyberpunk_Narrative_Commercial_4K.cfs',
+      currentTime: 0,
+      duration: 120,
+      isPlaying: false,
+      playbackRate: 1,
+      inPoint: 12,
+      outPoint: 74,
+      clips: INITIAL_CLIPS,
+      mediaAssets: INITIAL_MEDIA_ASSETS,
+      transcript: INITIAL_TRANSCRIPT,
+      selectedClipId: 'c-v1-01',
+      silenceState: {
+        thresholdDb: -28,
+        minPauseSec: 0.45,
+        stage: 4,
+        isAnalyzing: false,
+        isPreviewActive: true,
+        cuts: INITIAL_SILENCE_CUTS,
+        undoToken: 'TOKEN_SILENCE_PREVIEW_INIT',
+      },
+    });
+    get().showToastBanner('Loaded Demo Sequence: Cyberpunk Narrative (10 Tracks)');
   },
 
   showToastBanner: (msg: string) => {
@@ -1398,17 +1464,17 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   },
 
   createNewProject: (manifest: Partial<ProjectManifest>) => {
-    const newName = manifest.name || 'Untitled_Sequence_4K.cfs';
+    const newName = manifest.name || 'Untitled.prproj';
     const newManifest: ProjectManifest = {
       id: `proj-${Date.now()}`,
       name: newName,
-      directory: manifest.directory || 'D:/Projects/ClipFlow',
+      directory: manifest.directory || 'C:/Users/DHAIRYA GULATI/Documents/Adobe/Premiere Pro/26.0/Untitled',
       resolution: manifest.resolution || '4K UHD (3840×2160)',
       fps: manifest.fps || 60,
       colorSpace: manifest.colorSpace || 'ACEScg / Rec.709-A',
       template: manifest.template || 'Standard Commercial Project',
       updatedAt: new Date().toISOString(),
-      sizeGb: 1.2,
+      sizeGb: 0.1,
     };
 
     set((state) => ({
@@ -1421,9 +1487,15 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       isNewProjectOpen: false,
       isWelcomeOpen: false,
       currentTime: 0,
+      duration: 0,
+      clips: [],
+      mediaAssets: [],
+      selectedClipId: null,
+      inPoint: null,
+      outPoint: null,
     }));
 
-    get().showToastBanner(`Initialized project manifest: ${newName}`);
+    get().showToastBanner(`Created New Project: ${newName}`);
   },
 
   // Undo / Redo

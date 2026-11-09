@@ -4,7 +4,7 @@ import { MediaAsset } from '../types';
 import { formatDuration } from '../utils/timecode';
 
 export const MediaBin: React.FC = () => {
-  const { mediaAssets, insertAssetAtPlayhead, showToastBanner, projectName } = useTimelineStore();
+  const { mediaAssets, insertAssetAtPlayhead, showToastBanner, projectName, importSampleAssets } = useTimelineStore();
   const [activeTab, setActiveTab] = useState<'project' | 'browser'>('project');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
@@ -26,7 +26,7 @@ export const MediaBin: React.FC = () => {
   };
 
   const handleImportClick = () => {
-    showToastBanner('Import Media: Select video/audio files (.mov, .mp4, .wav)');
+    importSampleAssets();
   };
 
   return (

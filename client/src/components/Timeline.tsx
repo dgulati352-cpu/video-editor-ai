@@ -147,7 +147,9 @@ export const Timeline: React.FC = () => {
             }`}
             title="Snap in Timeline (S)"
           >
-            <span className="material-symbols-outlined text-[15px]">magnet</span>
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M3 7v6a9 9 0 0 0 18 0V7h-4v6a5 5 0 0 1-10 0V7H3zm0-4h4v3H3V3zm14 0h4v3h-4V3z" />
+            </svg>
           </button>
 
           {/* Linked Selection Icon */}

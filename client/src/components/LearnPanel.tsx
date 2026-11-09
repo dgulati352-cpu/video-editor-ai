@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTimelineStore } from '../state/timelineStore';
 
 export const LearnPanel: React.FC = () => {
-  const { showToastBanner, startSilenceAnalysis, quickAutoColorMatch } = useTimelineStore();
+  const { showToastBanner, loadDemoProject } = useTimelineStore();
   const [activeTab, setActiveTab] = useState<'tutorials' | 'search'>('tutorials');
 
   return (
@@ -53,7 +53,7 @@ export const LearnPanel: React.FC = () => {
           </span>
 
           <div
-            onClick={() => showToastBanner('Opening Tutorial: Create your first video')}
+            onClick={() => loadDemoProject()}
             className="group relative bg-[#262626] hover:bg-[#2e2e2e] border border-[#333333] rounded-[4px] overflow-hidden cursor-pointer transition-all shadow-sm"
           >
             <div className="aspect-[16/9] w-full overflow-hidden bg-black relative">
@@ -82,7 +82,7 @@ export const LearnPanel: React.FC = () => {
           </span>
 
           <div
-            onClick={() => startSilenceAnalysis()}
+            onClick={() => loadDemoProject()}
             className="group relative bg-[#262626] hover:bg-[#2e2e2e] border border-[#333333] rounded-[4px] overflow-hidden cursor-pointer transition-all shadow-sm"
           >
             <div className="aspect-[16/9] w-full overflow-hidden bg-black relative">
@@ -111,7 +111,7 @@ export const LearnPanel: React.FC = () => {
           </span>
 
           <div
-            onClick={() => quickAutoColorMatch()}
+            onClick={() => loadDemoProject()}
             className="group relative bg-[#262626] hover:bg-[#2e2e2e] border border-[#333333] rounded-[4px] overflow-hidden cursor-pointer transition-all shadow-sm"
           >
             <div className="aspect-[16/9] w-full overflow-hidden bg-black relative flex items-center justify-center">
