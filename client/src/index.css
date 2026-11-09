@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Studio NLE Dark (Default) */
+  --nle-bg: #0e0e0e;
+  --nle-canvas: #09090b;
+  --nle-surface: #131313;
+  --nle-panel: #18181b;
+  --nle-header: #1f1f23;
+  --nle-border: #27272a;
+  --nle-muted: #3f3f46;
+  --nle-text: #f4f4f5;
+  --nle-dim: #a1a1aa;
+}
+
+html.light {
+  /* Studio NLE Light */
+  --nle-bg: #f4f4f5;
+  --nle-canvas: #e4e4e7;
+  --nle-surface: #fdf8f8;
+  --nle-panel: #ffffff;
+  --nle-header: #f4f4f5;
+  --nle-border: #ddd9d8;
+  --nle-muted: #d4d4d8;
+  --nle-text: #18181b;
+  --nle-dim: #71717a;
+}
+
+/* Custom Ergonomic Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--nle-muted);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--nle-dim);
+}
+
+/* Material Symbols Outlined Default Styling */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.material-symbols-outlined.fill-1 {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}

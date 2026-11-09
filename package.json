@@ -1,0 +1,14 @@
+{
+  "name": "clipflow-studio",
+  "version": "2.1.0",
+  "private": true,
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "typecheck": "npm --prefix client run typecheck"
+  }
+}
+
