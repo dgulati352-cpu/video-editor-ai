@@ -32,6 +32,7 @@ export const Timeline: React.FC = () => {
     toggleSnapping,
     frameRate,
     showToastBanner,
+    openVoiceModal,
   } = useTimelineStore();
 
   const timelineContainerRef = useRef<HTMLDivElement | null>(null);
@@ -256,6 +257,16 @@ export const Timeline: React.FC = () => {
           >
             <span className="material-symbols-outlined text-[15px]">build</span>
           </button>
+
+          {/* Dedicated + Add Audio Quick Action */}
+          <button
+            onClick={openVoiceModal}
+            className="px-2 py-0.5 rounded bg-[#107c41]/20 hover:bg-[#107c41] text-[#34d399] hover:text-white border border-[#107c41]/40 flex items-center gap-1 text-[10px] transition-colors shadow-xs ml-1"
+            title="Add Audio Track / Voiceover / Music"
+          >
+            <span className="material-symbols-outlined text-[13px]">audiotrack</span>
+            <span>+ Add Audio</span>
+          </button>
         </div>
 
         {/* Zoom Slider */}
@@ -346,6 +357,15 @@ export const Timeline: React.FC = () => {
                     >
                       <span className="material-symbols-outlined text-[10px]">lock</span>
                     </button>
+                    {track.type === 'audio' && (
+                      <button
+                        onClick={openVoiceModal}
+                        className="w-4 h-4 rounded-[2px] text-[9px] flex items-center justify-center bg-[#2a2a2a] text-[#888888] hover:text-[#e81123] hover:bg-[#333333]"
+                        title="Voiceover Record on this Track"
+                      >
+                        <span className="material-symbols-outlined text-[11px]">mic</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -421,23 +441,47 @@ export const Timeline: React.FC = () => {
                             title="Trim In Point"
                           />
 
-                          {/* Media Thumbnail & FX badge */}
-                          {clip.mediaUrl ? (
-                            <img
-                              src={clip.mediaUrl}
-                              alt=""
-                              className="w-5 h-5 rounded-[1px] object-cover mr-1.5 shrink-0 pointer-events-none"
-                            />
+                          {/* Media Thumbnail or Audio Waveform */}
+                          {clip.type === 'audio' || /\.(mp3|wav|aac|m4a|ogg|flac|webm)$/i.test(clip.title) ? (
+                            <div className="flex items-center gap-1.5 w-full overflow-hidden pointer-events-none">
+                              <span className="material-symbols-outlined text-[12px] text-white/90 shrink-0">
+                                audiotrack
+                              </span>
+                              {/* Simulated Audio Waveform Bars */}
+                              <div className="flex items-center gap-[2px] h-3.5 flex-1 overflow-hidden opacity-75">
+                                {Array.from({ length: 40 }).map((_, wIdx) => {
+                                  const barHeight = 20 + ((wIdx * 19) % 75);
+                                  return (
+                                    <div
+                                      key={wIdx}
+                                      className="w-[2px] bg-white/90 rounded-full"
+                                      style={{ height: `${barHeight}%` }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                              <span className="font-semibold text-white text-[10px] truncate drop-shadow-sm ml-1 shrink-0">
+                                {clip.title}
+                              </span>
+                            </div>
                           ) : (
-                            <span className="px-1 py-0.2 rounded-[1px] bg-[#222222] text-[8px] text-[#00ff88] font-bold border border-[#333333] mr-1 shrink-0 pointer-events-none">
-                              fx
-                            </span>
+                            <>
+                              {clip.mediaUrl ? (
+                                <img
+                                  src={clip.mediaUrl}
+                                  alt=""
+                                  className="w-5 h-5 rounded-[1px] object-cover mr-1.5 shrink-0 pointer-events-none"
+                                />
+                              ) : (
+                                <span className="px-1 py-0.2 rounded-[1px] bg-[#222222] text-[8px] text-[#00ff88] font-bold border border-[#333333] mr-1 shrink-0 pointer-events-none">
+                                  fx
+                                </span>
+                              )}
+                              <span className="font-semibold text-white text-[10px] truncate drop-shadow-sm pointer-events-none">
+                                {clip.title}
+                              </span>
+                            </>
                           )}
-
-                          {/* Clip Title */}
-                          <span className="font-semibold text-white text-[10px] truncate drop-shadow-sm pointer-events-none">
-                            {clip.title}
-                          </span>
 
                           {/* Right Trim Handle */}
                           <div

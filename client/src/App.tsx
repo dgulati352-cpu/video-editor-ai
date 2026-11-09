@@ -13,6 +13,8 @@ import { BatchQueueModal } from './components/BatchQueueModal';
 import { VoiceModal } from './components/VoiceModal';
 import { RenderProgressModal } from './components/RenderProgressModal';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { AddAudioModal } from './components/AddAudioModal';
+import { AudioEngine } from './components/AudioEngine';
 import { Toast } from './components/Toast';
 
 export const App: React.FC = () => {
@@ -319,10 +321,14 @@ export const App: React.FC = () => {
         </div>
       </div>
 
+      {/* Multi-Track Realtime Audio Engine */}
+      <AudioEngine />
+
       {/* Global Modals & Dialogs */}
       <WelcomeModal />
       <BatchQueueModal />
       <VoiceModal />
+      <AddAudioModal />
       <RenderProgressModal />
       <KeyboardShortcutsModal />
       <Toast />

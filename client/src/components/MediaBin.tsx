@@ -13,6 +13,7 @@ export const MediaBin: React.FC = () => {
     removeMediaAsset,
     clearMediaAssets,
     setSourceAssetId,
+    openVoiceModal,
   } = useTimelineStore();
 
   const [activeTab, setActiveTab] = useState<'project' | 'browser'>('project');
@@ -227,7 +228,7 @@ export const MediaBin: React.FC = () => {
       </div>
 
       {/* Search Input Bar */}
-      <div className="px-3 py-1.5 bg-[#202020] border-b border-[#2d2d2d] flex items-center gap-2">
+      <div className="px-3 py-1.5 bg-[#202020] border-b border-[#2d2d2d] flex items-center gap-1.5">
         <div className="relative flex-1">
           <span className="material-symbols-outlined absolute left-2 top-1.5 text-[13px] text-[#888888]">
             search
@@ -242,10 +243,19 @@ export const MediaBin: React.FC = () => {
         </div>
         <button
           onClick={handleImportClick}
-          className="w-6 h-6 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#999999] hover:text-white"
-          title="Import Media from Local Storage (Ctrl+I)"
+          className="h-6 px-1.5 rounded hover:bg-[#2d2d2d] flex items-center gap-1 text-[#b0b0b0] hover:text-white border border-[#353535] text-[10px]"
+          title="Import Media (Ctrl+I)"
         >
-          <span className="material-symbols-outlined text-[15px]">file_upload</span>
+          <span className="material-symbols-outlined text-[13px]">file_upload</span>
+          <span>Import</span>
+        </button>
+        <button
+          onClick={openVoiceModal}
+          className="h-6 px-1.5 rounded bg-[#107c41]/20 hover:bg-[#107c41] text-[#34d399] hover:text-white border border-[#107c41]/40 flex items-center gap-1 text-[10px] transition-colors"
+          title="Add Audio / Voiceover / Music"
+        >
+          <span className="material-symbols-outlined text-[13px]">audiotrack</span>
+          <span>+ Audio</span>
         </button>
       </div>
 
@@ -261,15 +271,24 @@ export const MediaBin: React.FC = () => {
               Add your media
             </span>
             <span className="text-[11px] text-[#888888] max-w-[200px] mb-4">
-              Drag media here or import from local storage to begin
+              Drag media here, or import video, photo, or audio
             </span>
-            <button
-              onClick={handleImportClick}
-              className="px-4 py-1.5 rounded-[3px] bg-[#1473e6] hover:bg-[#005fb8] text-white text-[12px] font-medium transition-colors shadow-sm flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[15px]">add</span>
-              <span>Import media</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleImportClick}
+                className="px-3 py-1.5 rounded-[3px] bg-[#1473e6] hover:bg-[#005fb8] text-white text-[11px] font-medium transition-colors shadow-sm flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">add</span>
+                <span>Import media</span>
+              </button>
+              <button
+                onClick={openVoiceModal}
+                className="px-3 py-1.5 rounded-[3px] bg-[#107c41] hover:bg-[#0b5c30] text-white text-[11px] font-medium transition-colors shadow-sm flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">audiotrack</span>
+                <span>+ Add Audio</span>
+              </button>
+            </div>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 gap-2 h-full content-start">
