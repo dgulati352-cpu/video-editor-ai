@@ -2,9 +2,11 @@ import React, { useEffect } from 'react';
 import { useTimelineStore } from './state/timelineStore';
 import { TopBar } from './components/TopBar';
 import { Toolbar } from './components/Toolbar';
-import { MediaBin } from './components/MediaBin';
+import { LearnPanel } from './components/LearnPanel';
+import { SourceMonitor } from './components/SourceMonitor';
 import { ProgramMonitor } from './components/ProgramMonitor';
-import { InspectorHub } from './components/InspectorHub';
+import { PropertiesPanel } from './components/PropertiesPanel';
+import { MediaBin } from './components/MediaBin';
 import { QuickActionBar } from './components/QuickActionBar';
 import { Timeline } from './components/Timeline';
 import { WelcomeModal } from './components/WelcomeModal';
@@ -217,43 +219,55 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-nle-bg text-nle-text font-sans">
-      {/* Top Application Bar & Menu */}
+      {/* Top Application Bar & Menus (File, Edit, Clip, Sequence, Markers, Graphics, View, Window, Help) */}
       <TopBar />
 
-      {/* Main Multi-Panel Workspace Body */}
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Leftmost Ergonomic Toolbar */}
-        <Toolbar />
-
-        {/* Center Canvas & Side Docks */}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Upper Section: Media Bin, Program Monitor, Inspector Hub */}
-          <div className="flex flex-1 min-h-[300px] max-h-[58%] border-b border-nle-border overflow-hidden">
-            {/* Left Footage Browser / Media Bin (Collapsible) */}
-            {isMediaBinOpen && (
-              <div className="w-80 min-w-[260px] max-w-[340px] shrink-0 h-full transition-all">
-                <MediaBin />
-              </div>
-            )}
-
-            {/* Center Program Monitor (60 FPS Canvas) */}
-            <div className="flex-1 h-full min-w-[380px]">
-              <ProgramMonitor />
+      {/* Main Multi-Panel Workspace Body (Matching Premiere Pro Screenshot) */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Upper Section: Learn Dock, Source Monitor, Program Monitor, Properties Dock */}
+        <div className="flex flex-1 min-h-[280px] max-h-[55%] border-b border-nle-border overflow-hidden">
+          {/* 1. Left: Learn / Tutorials Panel */}
+          {isMediaBinOpen && (
+            <div className="w-72 min-w-[240px] max-w-[320px] shrink-0 h-full">
+              <LearnPanel />
             </div>
+          )}
 
-            {/* Right Inspector & AI Hub Dock (Collapsible) */}
-            {isInspectorOpen && (
-              <div className="w-96 min-w-[320px] max-w-[420px] shrink-0 h-full transition-all">
-                <InspectorHub />
-              </div>
-            )}
+          {/* 2. Center-Left: Source Monitor (Source: (no clips) ≡) */}
+          <div className="flex-1 h-full min-w-[260px]">
+            <SourceMonitor />
           </div>
 
-          {/* Quick Action Magic Bar (Hero AI Superpowers & Panel Toggles) */}
-          <QuickActionBar />
+          {/* 3. Center-Right: Program Monitor (Program: (no sequences) ≡) */}
+          <div className="flex-1 h-full min-w-[260px]">
+            <ProgramMonitor />
+          </div>
 
-          {/* Lower Section: Multi-Track Timeline Engine */}
-          <div className="flex-1 min-h-[220px] overflow-hidden">
+          {/* 4. Right: Properties / AI Hub Panel (Properties ≡) */}
+          {isInspectorOpen && (
+            <div className="w-80 min-w-[260px] max-w-[360px] shrink-0 h-full">
+              <PropertiesPanel />
+            </div>
+          )}
+        </div>
+
+        {/* Quick Action Magic Bar (Hero AI Superpowers & Panel Toggles) */}
+        <QuickActionBar />
+
+        {/* Lower Section: Project Assets / Media Browser, Toolbar, Multi-Track Sequence Timeline */}
+        <div className="flex flex-1 min-h-[220px] overflow-hidden">
+          {/* Bottom-Left: Project / Media Browser (Project: Untitled ≡) */}
+          {isMediaBinOpen && (
+            <div className="w-72 min-w-[240px] max-w-[320px] shrink-0 h-full border-r border-nle-border">
+              <MediaBin />
+            </div>
+          )}
+
+          {/* Vertical Ergonomic Toolbar (Selection, Razor, Ripple, Slip, Pen, Hand) */}
+          <Toolbar />
+
+          {/* Multi-Track Sequence Timeline Engine with Dynamic Stereo VU Meter */}
+          <div className="flex-1 h-full overflow-hidden">
             <Timeline />
           </div>
         </div>

@@ -8,6 +8,7 @@ interface MenuItem {
   label?: string;
   shortcut?: string;
   disabled?: boolean;
+  checked?: boolean;
   hasSubmenu?: boolean;
   submenu?: MenuItem[];
   action?: () => void;
@@ -739,27 +740,110 @@ export const TopBar: React.FC = () => {
         ],
       },
       { type: 'divider' },
-      { label: 'Dynamic Audio Waveforms', action: () => showToastBanner('Dynamic audio waveforms enabled') },
-      { label: 'Show Filmstrip Thumbnails', action: () => showToastBanner('Filmstrip thumbnails displayed on video tracks') },
+      {
+        label: 'Dynamic Audio Waveforms',
+        checked: true,
+        action: () => showToastBanner('Dynamic audio waveforms enabled'),
+      },
+      {
+        label: 'Show Filmstrip Thumbnails',
+        checked: true,
+        action: () => showToastBanner('Filmstrip thumbnails displayed on video tracks'),
+      },
     ],
 
     Window: [
-      { label: 'Workspaces', hasSubmenu: true, submenu: [
-        { label: 'Editing', action: () => setActiveWorkspace('editing') },
-        { label: 'Color (Lumetri)', action: () => setActiveWorkspace('color') },
-        { label: 'Audio (Fairlight / Mixer)', action: () => setActiveWorkspace('audio') },
-        { label: 'Graphics & Titles', action: () => setActiveWorkspace('graphics') },
-        { type: 'divider' },
-        { label: 'Reset to Saved Layout', action: () => showToastBanner('Layout restored to default') },
-      ]},
+      {
+        label: 'Workspaces',
+        hasSubmenu: true,
+        submenu: [
+          { label: 'All Panels', action: () => showToastBanner('Workspace: All Panels') },
+          { label: 'Assembly', action: () => showToastBanner('Workspace: Assembly') },
+          { label: 'Audio', action: () => setActiveWorkspace('audio') },
+          { label: 'Captions and Graphics', action: () => setActiveWorkspace('graphics') },
+          { label: 'Color', action: () => setActiveWorkspace('color') },
+          { label: 'Editing', action: () => setActiveWorkspace('editing') },
+          { label: 'Effects', action: () => showToastBanner('Workspace: Effects') },
+          { label: 'Learning', action: () => showToastBanner('Workspace: Learning') },
+          { label: 'Libraries', action: () => showToastBanner('Workspace: Libraries') },
+          { label: 'Metal / WebGPU Review', action: () => showToastBanner('Workspace: WebGPU Review') },
+          { label: 'Production', action: () => showToastBanner('Workspace: Production') },
+          { label: 'Simple', action: () => showToastBanner('Workspace: Simple') },
+          { label: 'Vertical', action: () => quickSocialReframe() },
+          { type: 'divider' },
+          { label: 'Reset to Saved Layout', action: () => showToastBanner('Layout restored to default') },
+          { label: 'Save Changes to this Workspace', action: () => showToastBanner('Workspace layout saved') },
+          { label: 'Save as New Workspace...', action: () => showToastBanner('Saved as custom workspace layout') },
+        ],
+      },
+      { label: 'Find Extensions on Exchange...', action: () => showToastBanner('Opening Extensions Exchange...') },
       { type: 'divider' },
-      { label: 'Media Bin / Assets', action: () => showToastBanner('Media Bin focused') },
-      { label: 'Program Monitor', action: () => showToastBanner('Program Monitor focused') },
-      { label: 'Timeline Tracks', action: () => showToastBanner('Timeline tracks focused') },
-      { label: 'Lumetri Color Wheels', action: () => setActiveWorkspace('color') },
-      { label: 'Interactive Transcript & Diarization', action: () => showToastBanner('Transcript dock focused') },
-      { label: 'AI Silence Telemetry Studio', action: () => openVoiceModal() },
-      { label: 'Batch Render Queue', action: () => setBatchQueueOpen(true) },
+      {
+        label: 'Extensions',
+        hasSubmenu: true,
+        submenu: [
+          { label: 'ClipFlow AI Assistant' },
+          { label: 'Cloud Sequence Review' },
+        ],
+      },
+      {
+        label: 'UXP Plugins',
+        hasSubmenu: true,
+        submenu: [
+          { label: 'Manage Plugins...' },
+        ],
+      },
+      { type: 'divider' },
+      { label: 'Maximize Frame', shortcut: 'Shift+`', action: () => showToastBanner('Frame maximized to full display') },
+      { type: 'divider' },
+      { label: 'Audio Clip Effect Editor', disabled: true },
+      { label: 'Audio Track Effect Editor', disabled: true },
+      { type: 'divider' },
+      { label: 'Adobe Stock', action: () => showToastBanner('Opening Stock Assets Library...') },
+      { label: 'Audio Clip Mixer', shortcut: 'Shift+9', action: () => showToastBanner('Audio Clip Mixer opened') },
+      { label: 'Audio Meters', checked: true, action: () => showToastBanner('Master Audio Meters active') },
+      { label: 'Audio Track Mixer', shortcut: 'Shift+6', action: () => showToastBanner('Audio Track Mixer opened') },
+      { label: 'Effect Controls', shortcut: 'Shift+5', action: () => showToastBanner('Effect Controls opened') },
+      { label: 'Effects', shortcut: 'Shift+7', action: () => showToastBanner('Effects dock focused') },
+      { label: 'Essential Sound', action: () => showToastBanner('Essential Sound opened') },
+      { label: 'Events', action: () => showToastBanner('Events log opened') },
+      {
+        label: 'Frame.io',
+        hasSubmenu: true,
+        submenu: [
+          { label: 'Frame.io Review Links...' },
+          { label: 'Upload Sequence to Frame.io...' },
+        ],
+      },
+      { label: 'Graphics Templates', action: () => showToastBanner('Graphics Templates opened') },
+      { label: 'History', action: () => showToastBanner('History Snapshot journal opened') },
+      { label: 'Info', action: () => showToastBanner('Clip metadata info displayed') },
+      { label: 'Learn', checked: true, action: () => showToastBanner('Learn & Tutorials panel focused') },
+      { label: 'Libraries', action: () => showToastBanner('Creative Cloud Libraries opened') },
+      { label: 'Lumetri Color', action: () => setActiveWorkspace('color') },
+      { label: 'Lumetri Scopes', action: () => showToastBanner('Parade & Vectorscope monitors opened') },
+      { label: 'Markers', action: () => showToastBanner('Markers panel opened') },
+      { label: 'Media Browser', shortcut: 'Shift+8', checked: true, action: () => showToastBanner('Media Browser panel opened') },
+      { label: 'Metadata', action: () => showToastBanner('Metadata panel opened') },
+      { label: 'Production', action: () => showToastBanner('Production panel opened') },
+      { label: 'Program Monitor', shortcut: 'Shift+4', checked: true, action: () => showToastBanner('Program Monitor focused') },
+      { label: 'Progress', action: () => setBatchQueueOpen(true) },
+      {
+        label: 'Projects',
+        hasSubmenu: true,
+        submenu: [
+          { label: 'Cyberpunk_Narrative_Commercial_4K.cfs' },
+          { label: 'Recent Projects...' },
+        ],
+      },
+      { label: 'Properties', checked: true, action: () => showToastBanner('Properties panel focused') },
+      { label: 'Search', action: () => showToastBanner('Search panel opened') },
+      { label: 'Sequence Index', action: () => showToastBanner('Sequence Index opened') },
+      { label: 'Source Monitor', shortcut: 'Shift+2', checked: true, action: () => showToastBanner('Source Monitor focused') },
+      { label: 'Text', action: () => showToastBanner('Text & Diarized Transcript dock focused') },
+      { label: 'Timecode', action: () => showToastBanner('Big SMPTE Timecode display opened') },
+      { label: 'Timeline', shortcut: 'Shift+3', checked: true, action: () => showToastBanner('Timeline focused') },
+      { label: 'Tools', checked: true, action: () => showToastBanner('Tools bar active') },
     ],
 
     Help: [
@@ -864,7 +948,14 @@ export const TopBar: React.FC = () => {
                                 : 'text-[#f4f4f5] hover:bg-nle-panel hover:text-white'
                             }`}
                           >
-                            <span className="truncate">{item.label}</span>
+                            <div className="flex items-center gap-1.5 truncate">
+                              {item.checked !== undefined ? (
+                                <span className={`text-[11px] font-bold w-3 text-center ${item.checked ? 'text-white' : 'text-transparent'}`}>
+                                  ✓
+                                </span>
+                              ) : null}
+                              <span className="truncate">{item.label}</span>
+                            </div>
 
                             <div className="flex items-center gap-2">
                               {item.shortcut && (
@@ -931,39 +1022,53 @@ export const TopBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Center: Workspace Layout Tabs & SMPTE Timecode */}
+      {/* Center: Import | Edit | Export Mode Tabs & Sequence Title */}
       <div className="flex items-center gap-3">
-        {/* Workspace Switcher */}
-        <div className="flex items-center bg-nle-canvas p-0.5 rounded border border-nle-border">
-          {workspaces.map((ws) => (
-            <button
-              key={ws.id}
-              onClick={() => setActiveWorkspace(ws.id)}
-              className={`px-2.5 py-0.5 rounded text-[11px] font-medium transition-all ${
-                activeWorkspace === ws.id
-                  ? 'bg-nle-surface text-nle-accent shadow-sm font-semibold'
-                  : 'text-nle-dim hover:text-nle-text'
-              }`}
-            >
-              {ws.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 bg-nle-canvas px-1.5 py-0.5 rounded border border-nle-border">
+          <button
+            onClick={() => setWelcomeOpen(true)}
+            className="p-1 rounded text-nle-dim hover:text-white hover:bg-nle-panel transition-colors"
+            title="Home Screen"
+          >
+            <span className="material-symbols-outlined text-[15px]">home</span>
+          </button>
+          <button
+            onClick={() => showToastBanner('Import Workspace')}
+            className="px-2 py-0.5 rounded text-[11px] font-medium text-nle-dim hover:text-white hover:bg-nle-panel transition-colors"
+          >
+            Import
+          </button>
+          <button
+            onClick={() => setActiveWorkspace('editing')}
+            className="px-2.5 py-0.5 rounded text-[11px] font-bold text-nle-accent bg-nle-surface border-b-2 border-nle-accent shadow-sm"
+          >
+            Edit
+          </button>
+          <button
+            onClick={openRenderProgressModal}
+            className="px-2 py-0.5 rounded text-[11px] font-medium text-nle-dim hover:text-white hover:bg-nle-panel transition-colors"
+          >
+            Export
+          </button>
         </div>
 
-        {/* Timecode Readout */}
-        <div className="hidden sm:flex items-center gap-2 bg-nle-canvas px-2.5 py-0.5 rounded border border-nle-border font-mono text-[11px]">
-          <span className="text-nle-accent font-semibold tracking-wider">
-            {secondsToSMPTE(currentTime, frameRate)}
+        <div className="hidden lg:flex items-center gap-1.5 font-mono text-[11px] text-nle-dim">
+          <span className="text-white font-semibold">
+            {projectName.replace('.cfs', '')}
           </span>
-          <span className="text-nle-muted">/</span>
-          <span className="text-nle-dim tracking-wider">
-            {secondsToSMPTE(duration, frameRate)}
-          </span>
+          <span className="text-nle-muted">-</span>
+          <span className="text-nle-accent font-medium">Edited</span>
         </div>
       </div>
 
-      {/* Right: Undo/Redo, AI Copilot, Theme Toggle, Export Button */}
+      {/* Right: Workspace Switcher, Undo/Redo, AI Copilot, Theme, Profile Avatar */}
       <div className="flex items-center gap-2">
+        {/* Workspace Pill */}
+        <div className="hidden md:flex items-center bg-nle-canvas px-2 py-0.5 rounded border border-nle-border font-mono text-3xs text-nle-dim gap-1">
+          <span className="text-white font-semibold uppercase">{activeWorkspace}</span>
+          <span className="text-nle-dim text-[10px]">▾</span>
+        </div>
+
         {/* Undo / Redo */}
         <div className="flex items-center bg-nle-canvas rounded border border-nle-border p-0.5">
           <button
@@ -1028,6 +1133,14 @@ export const TopBar: React.FC = () => {
           <span className="material-symbols-outlined text-[15px]">ios_share</span>
           <span>Export</span>
         </button>
+
+        {/* Profile Avatar (dhairya gulati) */}
+        <div
+          className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-500 via-purple-500 to-amber-500 flex items-center justify-center text-white text-[10px] font-bold shadow-md cursor-pointer ml-1"
+          title="Dhairya Gulati (Active Editor)"
+        >
+          DG
+        </div>
       </div>
     </header>
   );
