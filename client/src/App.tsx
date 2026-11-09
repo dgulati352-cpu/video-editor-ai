@@ -5,11 +5,13 @@ import { Toolbar } from './components/Toolbar';
 import { MediaBin } from './components/MediaBin';
 import { ProgramMonitor } from './components/ProgramMonitor';
 import { InspectorHub } from './components/InspectorHub';
+import { QuickActionBar } from './components/QuickActionBar';
 import { Timeline } from './components/Timeline';
 import { WelcomeModal } from './components/WelcomeModal';
 import { BatchQueueModal } from './components/BatchQueueModal';
 import { VoiceModal } from './components/VoiceModal';
 import { RenderProgressModal } from './components/RenderProgressModal';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { Toast } from './components/Toast';
 
 export const App: React.FC = () => {
@@ -32,9 +34,13 @@ export const App: React.FC = () => {
     currentTime,
     duration,
     setCurrentTime,
+    isMediaBinOpen,
+    isInspectorOpen,
+    toggleKeyboardHelp,
+    toggleSnapping,
   } = useTimelineStore();
 
-  // Global Keyboard Shortcuts (J-K-L, Space, I, O, C, V, M, Del, etc.)
+  // Global Keyboard Shortcuts (J-K-L, Space, I, O, C, V, M, Del, ?, etc.)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in an input or textarea
@@ -72,6 +78,13 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         openRenderProgressModal();
+        return;
+      }
+
+      // Help Modal (?)
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        toggleKeyboardHelp();
         return;
       }
 
@@ -129,16 +142,20 @@ export const App: React.FC = () => {
         setActiveTool('track_forward');
         return;
       }
+      if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey) {
+        toggleSnapping();
+        return;
+      }
 
       // Frame Stepping
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        stepFrame(-1);
+        stepFrame(e.shiftKey ? -5 : -1);
         return;
       }
       if (e.key === 'ArrowRight') {
         e.preventDefault();
-        stepFrame(1);
+        stepFrame(e.shiftKey ? 5 : 1);
         return;
       }
 
@@ -167,6 +184,8 @@ export const App: React.FC = () => {
     setNewProjectOpen,
     playbackRate,
     setPlaybackRate,
+    toggleKeyboardHelp,
+    toggleSnapping,
   ]);
 
   // 60 FPS Real-time Playback Loop
@@ -209,22 +228,29 @@ export const App: React.FC = () => {
         {/* Center Canvas & Side Docks */}
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Upper Section: Media Bin, Program Monitor, Inspector Hub */}
-          <div className="flex flex-1 min-h-[320px] max-h-[58%] border-b border-nle-border overflow-hidden">
-            {/* Left Footage Browser / Media Bin */}
-            <div className="w-80 min-w-[260px] max-w-[340px] shrink-0 h-full">
-              <MediaBin />
-            </div>
+          <div className="flex flex-1 min-h-[300px] max-h-[58%] border-b border-nle-border overflow-hidden">
+            {/* Left Footage Browser / Media Bin (Collapsible) */}
+            {isMediaBinOpen && (
+              <div className="w-80 min-w-[260px] max-w-[340px] shrink-0 h-full transition-all">
+                <MediaBin />
+              </div>
+            )}
 
             {/* Center Program Monitor (60 FPS Canvas) */}
             <div className="flex-1 h-full min-w-[380px]">
               <ProgramMonitor />
             </div>
 
-            {/* Right Inspector & AI Hub Dock */}
-            <div className="w-96 min-w-[320px] max-w-[420px] shrink-0 h-full">
-              <InspectorHub />
-            </div>
+            {/* Right Inspector & AI Hub Dock (Collapsible) */}
+            {isInspectorOpen && (
+              <div className="w-96 min-w-[320px] max-w-[420px] shrink-0 h-full transition-all">
+                <InspectorHub />
+              </div>
+            )}
           </div>
+
+          {/* Quick Action Magic Bar (Hero AI Superpowers & Panel Toggles) */}
+          <QuickActionBar />
 
           {/* Lower Section: Multi-Track Timeline Engine */}
           <div className="flex-1 min-h-[220px] overflow-hidden">
@@ -238,6 +264,7 @@ export const App: React.FC = () => {
       <BatchQueueModal />
       <VoiceModal />
       <RenderProgressModal />
+      <KeyboardShortcutsModal />
       <Toast />
     </div>
   );

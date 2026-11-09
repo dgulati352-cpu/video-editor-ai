@@ -28,6 +28,8 @@ export const Timeline: React.FC = () => {
     setTrackVolume,
     audioPeakL,
     audioPeakR,
+    snappingEnabled,
+    toggleSnapping,
     showToastBanner,
   } = useTimelineStore();
 
@@ -37,6 +39,8 @@ export const Timeline: React.FC = () => {
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);
   const [clipOriginalStartTime, setClipOriginalStartTime] = useState<number>(0);
+  const [rulerHoverTime, setRulerHoverTime] = useState<number | null>(null);
+  const [snapLineX, setSnapLineX] = useState<number | null>(null);
 
   // Time conversion
   const timeToPixels = (time: number) => time * timelineZoom;
@@ -48,12 +52,43 @@ export const Timeline: React.FC = () => {
     updatePlayheadFromMouseEvent(e);
   };
 
+  const handleRulerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!timelineContainerRef.current) return;
+    const rect = timelineContainerRef.current.getBoundingClientRect();
+    const scrollLeft = timelineContainerRef.current.scrollLeft;
+    const mouseX = e.clientX - rect.left + scrollLeft - 180;
+    const hoverT = Math.max(0, Math.min(duration, pixelsToTime(mouseX)));
+    setRulerHoverTime(hoverT);
+  };
+
   const updatePlayheadFromMouseEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent) => {
     if (!timelineContainerRef.current) return;
     const rect = timelineContainerRef.current.getBoundingClientRect();
     const scrollLeft = timelineContainerRef.current.scrollLeft;
-    const mouseX = e.clientX - rect.left + scrollLeft - 180; // 180px is track header width
-    const newTime = Math.max(0, Math.min(duration, pixelsToTime(mouseX)));
+    const mouseX = e.clientX - rect.left + scrollLeft - 180;
+    let newTime = Math.max(0, Math.min(duration, pixelsToTime(mouseX)));
+
+    // Magnetic snapping to In/Out points or clip edges
+    if (snappingEnabled) {
+      const snapPoints = [
+        0,
+        inPoint ?? -999,
+        outPoint ?? -999,
+        ...clips.map((c) => c.startTime),
+        ...clips.map((c) => c.startTime + c.duration),
+      ];
+      const threshold = 8 / timelineZoom; // 8px snap threshold
+      for (const sp of snapPoints) {
+        if (Math.abs(newTime - sp) < threshold) {
+          newTime = sp;
+          setSnapLineX(timeToPixels(sp));
+          break;
+        } else {
+          setSnapLineX(null);
+        }
+      }
+    }
+
     setCurrentTime(newTime);
   };
 
@@ -64,7 +99,32 @@ export const Timeline: React.FC = () => {
       } else if (draggingClipId) {
         const deltaPx = e.clientX - dragStartX;
         const deltaTime = deltaPx / timelineZoom;
-        const newTime = Math.max(0, clipOriginalStartTime + deltaTime);
+        let newTime = Math.max(0, clipOriginalStartTime + deltaTime);
+
+        // Magnetic snapping during clip drag
+        if (snappingEnabled) {
+          const threshold = 10 / timelineZoom;
+          const otherClips = clips.filter((c) => c.id !== draggingClipId);
+          const snapTargets = [
+            currentTime,
+            0,
+            inPoint ?? -999,
+            outPoint ?? -999,
+            ...otherClips.map((c) => c.startTime),
+            ...otherClips.map((c) => c.startTime + c.duration),
+          ];
+
+          for (const target of snapTargets) {
+            if (Math.abs(newTime - target) < threshold) {
+              newTime = target;
+              setSnapLineX(timeToPixels(target));
+              break;
+            } else {
+              setSnapLineX(null);
+            }
+          }
+        }
+
         moveClip(draggingClipId, newTime);
       }
     };
@@ -72,6 +132,7 @@ export const Timeline: React.FC = () => {
     const handleMouseUp = () => {
       setIsScrubbing(false);
       setDraggingClipId(null);
+      setSnapLineX(null);
     };
 
     if (isScrubbing || draggingClipId) {
@@ -83,7 +144,7 @@ export const Timeline: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isScrubbing, draggingClipId, dragStartX, clipOriginalStartTime, timelineZoom, duration]);
+  }, [isScrubbing, draggingClipId, dragStartX, clipOriginalStartTime, timelineZoom, duration, snappingEnabled, clips, inPoint, outPoint, currentTime]);
 
   // Clip drag initiation
   const handleClipMouseDown = (e: React.MouseEvent, clip: Clip) => {
@@ -108,20 +169,20 @@ export const Timeline: React.FC = () => {
     <div className="flex flex-col h-full bg-nle-canvas border-t border-nle-border text-xs select-none">
       {/* Timeline Controls Bar */}
       <div className="flex items-center justify-between px-3 h-8 bg-nle-header border-b border-nle-border">
-        {/* Left: Timeline metadata */}
+        {/* Left: Sequence title & clip count */}
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-nle-accent">view_timeline</span>
           <span className="font-semibold text-nle-text text-[11px] uppercase tracking-wider">
-            Multi-Track Sequence Timeline
+            Sequence Timeline
           </span>
           <span className="px-1.5 py-0.2 rounded bg-nle-panel border border-nle-border text-3xs font-mono text-nle-dim">
-            V1-V3 | A1-A9 | CC1
+            {clips.length} Clips • {tracks.length} Tracks
           </span>
         </div>
 
         {/* Center: Silence Cuts HUD Indicator */}
         {silenceState.isPreviewActive && (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-nle-crimson/15 border border-nle-crimson/40 text-nle-crimson text-3xs font-mono font-semibold animate-pulse">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-nle-crimson/15 border border-nle-crimson/40 text-nle-crimson text-3xs font-mono font-semibold animate-pulse">
             <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
             <span>AI Silence Ripple Preview: 5 Cuts Highlighted</span>
           </div>
@@ -161,7 +222,7 @@ export const Timeline: React.FC = () => {
           <button
             onClick={deleteSelectedClip}
             disabled={!selectedClipId}
-            className={`p-1 rounded ${
+            className={`p-1 rounded transition-colors ${
               selectedClipId ? 'text-nle-crimson hover:bg-nle-crimson/15' : 'text-nle-muted cursor-not-allowed'
             }`}
             title="Delete Selected Clip (Del / Backspace)"
@@ -213,7 +274,7 @@ export const Timeline: React.FC = () => {
                     onClick={() => toggleMute(track.id)}
                     className={`w-4 h-4 rounded text-[9px] font-mono font-bold flex items-center justify-center transition-colors ${
                       track.isMuted
-                        ? 'bg-nle-crimson text-white'
+                        ? 'bg-nle-crimson text-white shadow-[0_0_6px_rgba(239,68,68,0.4)]'
                         : 'bg-nle-panel text-nle-dim hover:text-white border border-nle-border'
                     }`}
                     title="Mute Track (M)"
@@ -225,7 +286,7 @@ export const Timeline: React.FC = () => {
                     onClick={() => toggleSolo(track.id)}
                     className={`w-4 h-4 rounded text-[9px] font-mono font-bold flex items-center justify-center transition-colors ${
                       track.isSolo
-                        ? 'bg-nle-amber text-black'
+                        ? 'bg-nle-amber text-black shadow-[0_0_6px_rgba(245,158,11,0.4)]'
                         : 'bg-nle-panel text-nle-dim hover:text-white border border-nle-border'
                     }`}
                     title="Solo Track (S)"
@@ -268,6 +329,8 @@ export const Timeline: React.FC = () => {
             <div
               ref={rulerRef}
               onMouseDown={handleRulerMouseDown}
+              onMouseMove={handleRulerMouseMove}
+              onMouseLeave={() => setRulerHoverTime(null)}
               className="h-7 bg-nle-header border-b border-nle-border sticky top-0 z-10 cursor-ew-resize flex items-end relative overflow-hidden"
             >
               {Array.from({ length: totalTicks }).map((_, idx) => {
@@ -293,6 +356,16 @@ export const Timeline: React.FC = () => {
                   </div>
                 );
               })}
+
+              {/* Hover time tooltip on ruler */}
+              {rulerHoverTime !== null && !isScrubbing && (
+                <div
+                  className="absolute top-1 pointer-events-none z-20 bg-nle-panel border border-nle-border px-1.5 py-0.2 rounded text-[9px] font-mono text-white shadow"
+                  style={{ left: `${timeToPixels(rulerHoverTime)}px`, transform: 'translateX(-50%)' }}
+                >
+                  {formatDuration(rulerHoverTime)}
+                </div>
+              )}
 
               {/* In & Out Highlight Range */}
               {inPoint !== null && outPoint !== null && (
@@ -322,6 +395,17 @@ export const Timeline: React.FC = () => {
                   </div>
                 ))}
             </div>
+
+            {/* Magnetic Snap Guide Line */}
+            {snapLineX !== null && (
+              <div
+                className="absolute top-0 bottom-0 w-[1px] bg-nle-accent pointer-events-none z-25 shadow-[0_0_8px_#00e5ff]"
+                style={{
+                  left: `${snapLineX}px`,
+                  height: `${tracks.length * 56 + 28}px`,
+                }}
+              />
+            )}
 
             {/* Tracks Body */}
             <div className="relative">

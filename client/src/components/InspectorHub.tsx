@@ -680,3 +680,4 @@ export const InspectorHub: React.FC = () => {
     </div>
   );
 };
+

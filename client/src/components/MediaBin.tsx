@@ -4,7 +4,7 @@ import { MediaAsset } from '../types';
 import { formatDuration } from '../utils/timecode';
 
 export const MediaBin: React.FC = () => {
-  const { mediaAssets, showToastBanner } = useTimelineStore();
+  const { mediaAssets, insertAssetAtPlayhead, showToastBanner } = useTimelineStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterType, setFilterType] = useState<'all' | 'video' | 'audio'>('all');
   const [search, setSearch] = useState('');
@@ -23,25 +23,40 @@ export const MediaBin: React.FC = () => {
   };
 
   const handleInsertClip = (asset: MediaAsset) => {
-    showToastBanner(`Inserted "${asset.name}" into Timeline at playhead`);
+    insertAssetAtPlayhead(asset.id);
+  };
+
+  const handleImportClick = () => {
+    showToastBanner('Import Media: Select video/audio files (.mov, .mp4, .wav)');
   };
 
   return (
     <div className="flex flex-col h-full bg-nle-surface border-r border-nle-border text-xs select-none">
       {/* Media Bin Header */}
-      <div className="flex items-center justify-between px-3 h-8 bg-nle-header border-b border-nle-border">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-3 h-9 bg-nle-header border-b border-nle-border">
+        <div className="flex items-center gap-1.5">
           <span className="material-symbols-outlined text-[16px] text-nle-accent">video_library</span>
           <span className="font-semibold text-nle-text text-[11px] uppercase tracking-wider">
-            Media Bin / Project Assets
+            Media Bin
           </span>
           <span className="px-1.5 py-0.2 rounded bg-nle-panel border border-nle-border text-3xs font-mono text-nle-dim">
-            {filteredAssets.length} items
+            {filteredAssets.length}
           </span>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center gap-1">
+        {/* Action & View Toggles */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleImportClick}
+            className="flex items-center gap-1 px-2 py-0.5 rounded bg-nle-accent/15 border border-nle-accent/40 text-nle-accent hover:bg-nle-accent/25 text-3xs font-mono font-semibold transition-all shadow-[0_0_8px_rgba(0,229,255,0.1)] active:scale-95"
+            title="Import Media Files (Ctrl+I)"
+          >
+            <span className="material-symbols-outlined text-[13px]">add</span>
+            <span>Import</span>
+          </button>
+
+          <div className="w-[1px] h-3 bg-nle-border mx-0.5" />
+
           <button
             onClick={() => setViewMode('grid')}
             className={`p-1 rounded ${viewMode === 'grid' ? 'bg-nle-border text-nle-text' : 'text-nle-dim hover:text-nle-text'}`}
@@ -67,7 +82,7 @@ export const MediaBin: React.FC = () => {
           </span>
           <input
             type="text"
-            placeholder="Search footage, codecs, proxies..."
+            placeholder="Search clips..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-nle-surface border border-nle-border rounded pl-7 pr-2 py-1 text-[11px] text-nle-text focus:outline-none focus:border-nle-accent placeholder:text-nle-muted"
@@ -79,7 +94,7 @@ export const MediaBin: React.FC = () => {
             <button
               key={t}
               onClick={() => setFilterType(t)}
-              className={`px-2 py-0.5 rounded text-3xs font-medium uppercase transition-colors ${
+              className={`px-1.5 py-0.5 rounded text-3xs font-medium uppercase transition-colors ${
                 filterType === t ? 'bg-nle-panel text-nle-accent font-semibold' : 'text-nle-dim hover:text-nle-text'
               }`}
             >
@@ -91,21 +106,28 @@ export const MediaBin: React.FC = () => {
 
       {/* Asset Display */}
       <div className="flex-1 overflow-y-auto p-2">
-        {viewMode === 'grid' ? (
+        {filteredAssets.length === 0 ? (
+          <div className="h-40 flex flex-col items-center justify-center text-center p-4 text-nle-dim">
+            <span className="material-symbols-outlined text-[32px] mb-1 opacity-50">search_off</span>
+            <span className="font-semibold text-white text-xs">No media matched</span>
+            <span className="text-3xs mt-1">Try clearing your search filter or click Import Media.</span>
+          </div>
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 gap-2">
             {filteredAssets.map((asset) => {
               const currentScrub = hoverScrubMap[asset.id] || 0;
               return (
                 <div
                   key={asset.id}
-                  onDoubleClick={() => handleInsertClip(asset)}
-                  className="group relative bg-nle-panel border border-nle-border rounded overflow-hidden hover:border-nle-accent/60 transition-all cursor-pointer flex flex-col"
+                  className="group relative bg-nle-panel border border-nle-border rounded-lg overflow-hidden hover:border-nle-accent/60 transition-all flex flex-col shadow-sm"
                 >
                   {/* Thumbnail / Scrub Container */}
                   <div
-                    className="relative aspect-video bg-black/40 overflow-hidden flex items-center justify-center"
+                    className="relative aspect-video bg-black/40 overflow-hidden flex items-center justify-center cursor-pointer"
                     onMouseMove={(e) => handleHoverScrub(e, asset.id, asset.duration)}
                     onMouseLeave={() => setHoverScrubMap((prev) => ({ ...prev, [asset.id]: 0 }))}
+                    onClick={() => handleInsertClip(asset)}
+                    title="Click or Double-Click to Insert onto Timeline at Playhead"
                   >
                     {asset.thumbnail ? (
                       <img
@@ -118,7 +140,7 @@ export const MediaBin: React.FC = () => {
                         <span className="material-symbols-outlined text-[28px] text-nle-amber">
                           graphic_eq
                         </span>
-                        <span className="text-[10px] font-mono mt-1">Waveform Stem</span>
+                        <span className="text-[10px] font-mono mt-1">Audio Stem</span>
                       </div>
                     )}
 
@@ -131,6 +153,14 @@ export const MediaBin: React.FC = () => {
                         </span>
                       </div>
                     )}
+
+                    {/* Quick Add Overlay Pill on Hover */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                      <span className="px-2 py-1 rounded-md bg-nle-accent text-black font-bold text-3xs flex items-center gap-1 shadow-lg">
+                        <span className="material-symbols-outlined text-[13px]">add</span>
+                        Insert at Playhead
+                      </span>
+                    </div>
 
                     {/* Duration badge */}
                     <span className="absolute bottom-1 right-1 bg-black/75 px-1 py-0.2 rounded text-3xs font-mono text-white">
@@ -190,39 +220,33 @@ export const MediaBin: React.FC = () => {
                   <th className="p-1.5">Duration</th>
                   <th className="p-1.5">Codec</th>
                   <th className="p-1.5">Resolution</th>
-                  <th className="p-1.5">Proxy</th>
-                  <th className="p-1.5">AI Analysis</th>
+                  <th className="p-1.5">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAssets.map((asset) => (
                   <tr
                     key={asset.id}
-                    onDoubleClick={() => handleInsertClip(asset)}
                     className="border-b border-nle-border hover:bg-nle-panel cursor-pointer transition-colors"
                   >
                     <td className="p-1.5 font-sans font-semibold text-nle-text flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[14px] text-nle-accent">
                         {asset.type === 'video' ? 'movie' : 'audiotrack'}
                       </span>
-                      <span className="truncate max-w-[140px]">{asset.name}</span>
+                      <span className="truncate max-w-[130px]">{asset.name}</span>
                     </td>
                     <td className="p-1.5 text-nle-dim uppercase">{asset.type}</td>
                     <td className="p-1.5 text-nle-text">{formatDuration(asset.duration)}</td>
                     <td className="p-1.5 text-nle-dim truncate max-w-[90px]">{asset.codec}</td>
                     <td className="p-1.5 text-nle-text">{asset.resolution}</td>
                     <td className="p-1.5">
-                      <span
-                        className={`px-1 py-0.2 rounded text-[8px] ${
-                          asset.proxyStatus === 'ready'
-                            ? 'text-nle-emerald bg-nle-emerald/10'
-                            : 'text-nle-amber bg-nle-amber/10'
-                        }`}
+                      <button
+                        onClick={() => handleInsertClip(asset)}
+                        className="px-1.5 py-0.5 rounded bg-nle-accent/15 text-nle-accent hover:bg-nle-accent hover:text-black font-semibold transition-all"
                       >
-                        {asset.proxyStatus}
-                      </span>
+                        + Insert
+                      </button>
                     </td>
-                    <td className="p-1.5 text-nle-accent">{asset.aiBadges.join(', ') || '—'}</td>
                   </tr>
                 ))}
               </tbody>

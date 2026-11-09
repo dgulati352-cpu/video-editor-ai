@@ -81,6 +81,10 @@ interface TimelineState {
   isBatchQueueOpen: boolean;
   isVoiceModalOpen: boolean;
   isRenderProgressOpen: boolean;
+  isKeyboardHelpOpen: boolean;
+  isMediaBinOpen: boolean;
+  isInspectorOpen: boolean;
+  snappingEnabled: boolean;
   toastMessage: string | null;
 
   // Undo / Redo
@@ -149,7 +153,7 @@ interface TimelineState {
   toggleBatchJobStatus: (id: string) => void;
   removeBatchJob: (id: string) => void;
 
-  // Modals
+  // Modals & Panels
   openVoiceModal: () => void;
   closeVoiceModal: () => void;
   openRenderProgressModal: () => void;
@@ -157,7 +161,20 @@ interface TimelineState {
   setWelcomeOpen: (open: boolean) => void;
   setNewProjectOpen: (open: boolean) => void;
   setBatchQueueOpen: (open: boolean) => void;
+  setKeyboardHelpOpen: (open: boolean) => void;
+  toggleKeyboardHelp: () => void;
+  toggleMediaBin: () => void;
+  toggleInspector: () => void;
+  toggleSnapping: () => void;
   showToastBanner: (msg: string) => void;
+
+  // AI Quick Actions
+  quickAutoCutSilence: () => void;
+  quickAutoSubtitles: () => void;
+  quickAutoColorMatch: () => void;
+  quickVoiceIsolation: () => void;
+  quickSocialReframe: () => void;
+  insertAssetAtPlayhead: (assetId: string) => void;
   createNewProject: (manifest: Partial<ProjectManifest>) => void;
 
   // Undo / Redo
@@ -791,6 +808,10 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   isBatchQueueOpen: false,
   isVoiceModalOpen: false,
   isRenderProgressOpen: false,
+  isKeyboardHelpOpen: false,
+  isMediaBinOpen: true,
+  isInspectorOpen: true,
+  snappingEnabled: true,
   toastMessage: null,
 
   // Undo / Redo
@@ -1259,7 +1280,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     }));
   },
 
-  // Modals & Banners
+  // Modals & Panels
   openVoiceModal: () => set({ isVoiceModalOpen: true }),
   closeVoiceModal: () => set({ isVoiceModalOpen: false }),
   openRenderProgressModal: () => set({ isRenderProgressOpen: true }),
@@ -1267,6 +1288,105 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   setWelcomeOpen: (open: boolean) => set({ isWelcomeOpen: open }),
   setNewProjectOpen: (open: boolean) => set({ isNewProjectOpen: open }),
   setBatchQueueOpen: (open: boolean) => set({ isBatchQueueOpen: open }),
+  setKeyboardHelpOpen: (open: boolean) => set({ isKeyboardHelpOpen: open }),
+  toggleKeyboardHelp: () => set((state) => ({ isKeyboardHelpOpen: !state.isKeyboardHelpOpen })),
+  toggleMediaBin: () => set((state) => ({ isMediaBinOpen: !state.isMediaBinOpen })),
+  toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
+  toggleSnapping: () => {
+    const next = !get().snappingEnabled;
+    set({ snappingEnabled: next });
+    get().showToastBanner(`Timeline Snapping ${next ? 'Enabled' : 'Disabled'} (S)`);
+  },
+
+  // AI Quick Actions (User-Friendly Superpowers)
+  quickAutoCutSilence: () => {
+    get().showToastBanner('⚡ Auto-Cut: Scanning 4K audio tracks for dead air & filler words...');
+    get().startSilenceAnalysis();
+  },
+
+  quickAutoSubtitles: () => {
+    get().showToastBanner('💬 Auto-Captions: Synchronizing diarized speech to CC1 subtitle track...');
+    // Ensure subtitle clip exists on CC1
+    const { clips, currentTime } = get();
+    const hasCC = clips.some((c) => c.trackId === 'cc1' && currentTime >= c.startTime && currentTime <= c.startTime + c.duration);
+    if (!hasCC) {
+      const newCC: Clip = {
+        id: `c-cc-gen-${Date.now()}`,
+        trackId: 'cc1',
+        title: 'CC1: Auto Speech-to-Text Diarization',
+        startTime: currentTime,
+        duration: 15,
+        trimStart: 0,
+        trimEnd: 15,
+        color: '#eab308',
+        speed: 1,
+        volumeDb: 0,
+        type: 'subtitle',
+      };
+      set({ clips: [...clips, newCC] });
+    }
+    get().showToastBanner('Generated word-accurate subtitles with speaker badges on CC1');
+  },
+
+  quickAutoColorMatch: () => {
+    get().pushHistorySnapshot();
+    set((state) => ({
+      colorState: {
+        ...state.colorState,
+        exposure: 0.35,
+        contrast: 18,
+        highlights: -8,
+        shadows: 12,
+        temperature: 5700,
+        vibrance: 22,
+        activeLut: 'Film Look: Teal & Orange 35mm',
+      },
+    }));
+    get().showToastBanner('🎨 Auto-Color: Skin tones balanced & 35mm Film LUT matched');
+  },
+
+  quickVoiceIsolation: () => {
+    get().pushHistorySnapshot();
+    set((state) => ({
+      effects: state.effects.map((fx) =>
+        fx.id === 'fx-1' ? { ...fx, applied: true, paramValue: -22 } : fx
+      ),
+    }));
+    get().showToastBanner('🎙 Voice Isolation: Background rumble suppressed (-22 dB)');
+  },
+
+  quickSocialReframe: () => {
+    const isVertical = get().resolution.includes('9:16');
+    const newRes = isVertical ? '4K UHD (3840×2160)' : '9:16 Social (1080×1920)';
+    set({ resolution: newRes });
+    get().showToastBanner(`📱 Social Reframe: Workspace conformed to ${newRes}`);
+  },
+
+  insertAssetAtPlayhead: (assetId: string) => {
+    const { mediaAssets, currentTime, clips } = get();
+    const asset = mediaAssets.find((a) => a.id === assetId);
+    if (!asset) return;
+
+    get().pushHistorySnapshot();
+    const targetTrackId = asset.type === 'video' ? 'v1' : 'a1';
+    const newClip: Clip = {
+      id: `clip-${Date.now()}`,
+      trackId: targetTrackId,
+      title: asset.name,
+      startTime: currentTime,
+      duration: Math.min(25, asset.duration),
+      trimStart: 0,
+      trimEnd: Math.min(25, asset.duration),
+      color: asset.type === 'video' ? '#00e5ff' : '#10b981',
+      speed: 1,
+      volumeDb: 0,
+      type: asset.type === 'video' ? 'video' : 'audio',
+      hasAiAnalysis: true,
+    };
+
+    set({ clips: [...clips, newClip], selectedClipId: newClip.id });
+    get().showToastBanner(`Inserted "${asset.name}" onto ${targetTrackId.toUpperCase()} at ${currentTime.toFixed(1)}s`);
+  },
 
   showToastBanner: (msg: string) => {
     set({ toastMessage: msg });
@@ -1370,3 +1490,4 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     get().showToastBanner('Redo performed');
   },
 }));
+
