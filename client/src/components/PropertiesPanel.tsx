@@ -4,34 +4,34 @@ import { InspectorHub } from './InspectorHub';
 
 export const PropertiesPanel: React.FC = () => {
   const { selectedClipId, clips, showToastBanner } = useTimelineStore();
-  const [activeTab, setActiveTab] = useState<'properties' | 'inspector'>('inspector');
+  const [activeTab, setActiveTab] = useState<'properties' | 'inspector'>('properties');
 
   const selectedClip = clips.find((c) => c.id === selectedClipId);
 
   return (
-    <div className="flex flex-col h-full bg-[#131313] border-l border-nle-border text-xs select-none overflow-hidden">
-      {/* Header with Properties ≡ and Inspector Tabs */}
-      <div className="flex items-center justify-between px-2.5 h-8 bg-nle-header border-b border-nle-border">
-        <div className="flex items-center gap-1.5">
+    <div className="flex flex-col h-full bg-[#1e1e1e] border-l border-[#303030] text-xs select-none overflow-hidden">
+      {/* Header with Properties ≡ */}
+      <div className="flex items-center justify-between px-3 h-7 bg-[#252525] border-b border-[#303030]">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('properties')}
-            className={`font-semibold text-[11px] px-1 py-0.5 rounded transition-colors ${
-              activeTab === 'properties' ? 'text-white' : 'text-nle-dim hover:text-white'
+            className={`font-semibold text-[11px] transition-colors ${
+              activeTab === 'properties' ? 'text-white' : 'text-[#888888] hover:text-white'
             }`}
           >
             Properties
           </button>
-          <span className="text-nle-dim text-[11px] font-mono leading-none">≡</span>
+          <span className="text-[#888888] text-[10px]">≡</span>
 
-          <div className="w-[1px] h-3 bg-nle-border mx-1" />
+          <div className="w-[1px] h-3 bg-[#3a3a3a] mx-1" />
 
           <button
             onClick={() => setActiveTab('inspector')}
-            className={`font-semibold text-[11px] px-1 py-0.5 rounded transition-colors ${
-              activeTab === 'inspector' ? 'text-nle-accent' : 'text-nle-dim hover:text-white'
+            className={`text-[11px] font-medium transition-colors ${
+              activeTab === 'inspector' ? 'text-[#1473e6] font-semibold' : 'text-[#888888] hover:text-white'
             }`}
           >
-            AI Hub & Color
+            AI & Lumetri
           </button>
         </div>
       </div>
@@ -40,88 +40,75 @@ export const PropertiesPanel: React.FC = () => {
       <div className="flex-1 overflow-hidden">
         {activeTab === 'inspector' ? (
           <InspectorHub />
+        ) : selectedClip ? (
+          <div className="h-full overflow-y-auto p-3 flex flex-col gap-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#2d2d2d]">
+              <div className="flex flex-col truncate">
+                <span className="font-semibold text-white text-[12px] truncate">
+                  {selectedClip.title}
+                </span>
+                <span className="text-[10px] text-[#888888] font-mono uppercase">
+                  {selectedClip.trackId.toUpperCase()} • {selectedClip.type}
+                </span>
+              </div>
+              <span
+                className="w-3 h-3 rounded-full shrink-0"
+                style={{ backgroundColor: selectedClip.color || '#1473e6' }}
+              />
+            </div>
+
+            {/* Transform */}
+            <div className="flex flex-col gap-1.5 bg-[#252525] p-2.5 rounded-[3px] border border-[#333333]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a0a0a0]">
+                Motion
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-[#888888]">
+                <div className="flex flex-col">
+                  <span>Position</span>
+                  <span className="text-white font-medium">1920, 1080</span>
+                </div>
+                <div className="flex flex-col">
+                  <span>Scale</span>
+                  <span className="text-white font-medium">100.0%</span>
+                </div>
+                <div className="flex flex-col">
+                  <span>Rotation</span>
+                  <span className="text-white font-medium">0.0°</span>
+                </div>
+                <div className="flex flex-col">
+                  <span>Opacity</span>
+                  <span className="text-white font-medium">100.0%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Timing */}
+            <div className="flex flex-col gap-1.5 bg-[#252525] p-2.5 rounded-[3px] border border-[#333333]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a0a0a0]">
+                Time & Duration
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-[#888888]">
+                <div className="flex flex-col">
+                  <span>Start</span>
+                  <span className="text-white font-medium">{selectedClip.startTime.toFixed(2)}s</span>
+                </div>
+                <div className="flex flex-col">
+                  <span>Duration</span>
+                  <span className="text-white font-medium">{selectedClip.duration.toFixed(2)}s</span>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <div className="h-full overflow-y-auto p-4 flex flex-col justify-between">
-            {selectedClip ? (
-              <div className="flex flex-col gap-3.5">
-                <div className="flex items-center justify-between pb-2 border-b border-nle-border">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-white text-[12px] truncate max-w-[220px]">
-                      {selectedClip.title}
-                    </span>
-                    <span className="text-3xs font-mono text-nle-dim uppercase">
-                      Track: {selectedClip.trackId.toUpperCase()} • {selectedClip.type}
-                    </span>
-                  </div>
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: selectedClip.color }}
-                  />
-                </div>
-
-                {/* Transform Properties */}
-                <div className="flex flex-col gap-2 bg-[#18181b] p-3 rounded-lg border border-nle-border">
-                  <span className="text-3xs font-mono uppercase tracking-wider text-nle-accent font-bold">
-                    Motion & Transform
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2 text-3xs font-mono text-nle-dim">
-                    <div className="flex flex-col">
-                      <span>Position</span>
-                      <span className="text-white font-semibold">1920.0, 1080.0</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span>Scale</span>
-                      <span className="text-white font-semibold">100.0%</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span>Rotation</span>
-                      <span className="text-white font-semibold">0.0°</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span>Opacity</span>
-                      <span className="text-white font-semibold">100.0%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Time & Duration */}
-                <div className="flex flex-col gap-2 bg-[#18181b] p-3 rounded-lg border border-nle-border">
-                  <span className="text-3xs font-mono uppercase tracking-wider text-nle-dim font-bold">
-                    Timing & Retiming
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2 text-3xs font-mono text-nle-dim">
-                    <div className="flex flex-col">
-                      <span>Start Time</span>
-                      <span className="text-white">{selectedClip.startTime.toFixed(2)}s</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span>Duration</span>
-                      <span className="text-white">{selectedClip.duration.toFixed(2)}s</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span>Speed</span>
-                      <span className="text-nle-emerald font-semibold">{selectedClip.speed}x (Optical Flow)</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span>Volume</span>
-                      <span className="text-white">{selectedClip.volumeDb} dB</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-nle-dim">
-                <span className="material-symbols-outlined text-[36px] opacity-40 mb-2">
-                  crop_original
-                </span>
-                <span className="font-bold text-white text-[12px] mb-1">No clip selected</span>
-                <span className="text-3xs text-nle-dim max-w-[200px] leading-relaxed">
-                  Select a clip in the timeline or double-click an asset to view and adjust its properties.
-                </span>
-              </div>
-            )}
+          /* Empty State Matching Real Premiere Pro Screenshot */
+          <div className="h-full flex flex-col items-center justify-center p-4 text-center">
+            <div className="flex items-center gap-1.5 text-[#888888] mb-2">
+              <span className="material-symbols-outlined text-[18px]">tune</span>
+              <span className="font-semibold text-[12px] text-[#a0a0a0]">No sequence</span>
+            </div>
+            <span className="text-[11px] text-[#777777] max-w-[200px]">
+              Select a clip in the timeline to view properties.
+            </span>
           </div>
         )}
       </div>

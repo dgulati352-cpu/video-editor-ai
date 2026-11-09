@@ -52,14 +52,24 @@ export const TopBar: React.FC = () => {
     isSafeMarginsActive,
     quickSocialReframe,
     quickAutoSubtitles,
+    quickAutoCutSilence,
+    quickAutoColorMatch,
+    quickVoiceIsolation,
     setCurrentTime,
     inPoint,
     outPoint,
+    isMediaBinOpen,
+    toggleMediaBin,
+    isInspectorOpen,
+    toggleInspector,
+    toggleKeyboardHelp,
   } = useTimelineStore();
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const menuBarRef = useRef<HTMLDivElement | null>(null);
+  const workspaceDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -67,6 +77,9 @@ export const TopBar: React.FC = () => {
       if (menuBarRef.current && !menuBarRef.current.contains(e.target as Node)) {
         setActiveMenu(null);
         setActiveSubmenu(null);
+      }
+      if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(e.target as Node)) {
+        setIsWorkspaceMenuOpen(false);
       }
     };
     window.addEventListener('mousedown', handleClickOutside);
@@ -80,251 +93,124 @@ export const TopBar: React.FC = () => {
         hasSubmenu: true,
         submenu: [
           { label: 'Project...', shortcut: 'Ctrl+Alt+N', action: () => setNewProjectOpen(true) },
-          { label: 'Sequence...', shortcut: 'Ctrl+N', action: () => showToastBanner('Created New Sequence (4K UHD 60fps)') },
-          { label: 'Adjustment Layer...', action: () => showToastBanner('Added Adjustment Layer to V3') },
-          { label: 'Title Card (MOGRT)...', action: () => showToastBanner('Added Motion Graphics Title') },
-          { label: 'Color Matte...', action: () => showToastBanner('Generated 16-bit Color Matte') },
-          { label: 'Bars and Tone...', action: () => showToastBanner('Generated SMPTE Color Bars & 1kHz Tone') },
+          { label: 'Production...' },
+          { label: 'Sequence...', shortcut: 'Ctrl+N', action: () => showToastBanner('Created New Sequence: Sequence 01') },
+          { label: 'Bin', shortcut: 'Ctrl+/' },
+          { label: 'Search Bin...' },
+          { type: 'divider' },
+          { label: 'Adjustment Layer...' },
+          { label: 'Color Matte...' },
+          { label: 'Bars and Tone...' },
+          { label: 'Black Video...' },
+          { label: 'Captions...' },
         ],
       },
       { label: 'Open Project...', shortcut: 'Ctrl+O', action: () => setWelcomeOpen(true) },
-      { label: 'Open Production...', disabled: false, action: () => showToastBanner('Opening Production Workspace...') },
-      { label: 'Open Team Project...', disabled: false, action: () => showToastBanner('Connecting to Team Sequence Lock...') },
+      { label: 'Open Production...', disabled: true },
+      { label: 'Open Team Project...', disabled: true },
       {
         label: 'Open Recent',
         hasSubmenu: true,
-        submenu: [
-          ...recentProjects.map((p) => ({
-            label: p.name,
-            action: () => showToastBanner(`Opened: ${p.name}`),
-          })),
-          { type: 'divider' },
-          { label: 'Clear Recent Files', action: () => showToastBanner('Recent files list cleared') },
-        ],
+        submenu: recentProjects.map((p) => ({
+          label: p.name,
+          action: () => showToastBanner(`Opened Project: ${p.name}`),
+        })),
       },
       { type: 'divider' },
-      { label: 'Close', shortcut: 'Ctrl+W', action: () => showToastBanner('Closing active panel') },
+      { label: 'Close', shortcut: 'Ctrl+W', action: () => setWelcomeOpen(true) },
       { label: 'Close Project', shortcut: 'Ctrl+Shift+W', action: () => setWelcomeOpen(true) },
       { label: 'Close Production', disabled: true },
       { label: 'Close All Projects', action: () => setWelcomeOpen(true) },
       { label: 'Close All Other Projects', disabled: true },
       { label: 'Refresh All Projects', disabled: true },
-      { type: 'divider' },
-      { label: 'Save', shortcut: 'Ctrl+S', action: () => showToastBanner('Auto-Saved SQLite database (WAL atomic snapshot)') },
-      { label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: () => showToastBanner('Saved copy as new sequence revision') },
-      { label: 'Save a Copy...', shortcut: 'Ctrl+Alt+S', action: () => showToastBanner('Snapshot archived to backup scratch disk') },
-      { label: 'Save as Template...', action: () => showToastBanner('Sequence saved to Starter Templates') },
-      { label: 'Save All', action: () => showToastBanner('All open sequence manifests saved') },
-      { label: 'Revert', action: () => showToastBanner('Reverted to last atomic snapshot') },
+      { label: 'Save', shortcut: 'Ctrl+S', action: () => showToastBanner('Project Saved: Untitled.prproj') },
+      { label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: () => showToastBanner('Save As... project dialog') },
+      { label: 'Save a Copy...', shortcut: 'Ctrl+Alt+S' },
+      { label: 'Save as Template...' },
+      { label: 'Save All' },
+      { label: 'Revert' },
       { type: 'divider' },
       { label: 'Link Media...', disabled: true },
       { label: 'Make Offline...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'ClipFlow Dynamic Link',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'New Neural Composition...', action: () => showToastBanner('Linked to Neural Motion Engine') },
-          { label: 'Import WebGPU Canvas Node...', action: () => showToastBanner('Imported WebGPU shader node') },
-        ],
-      },
+      { label: 'Adobe Dynamic Link', hasSubmenu: true, disabled: true },
       { type: 'divider' },
       { label: 'Import from Media Browser', shortcut: 'Ctrl+Alt+I', disabled: true },
-      { label: 'Import...', shortcut: 'Ctrl+I', action: () => showToastBanner('Importing media files...') },
+      { label: 'Import...', shortcut: 'Ctrl+I', action: () => showToastBanner('Import Media: Select video/audio files') },
       { label: 'Import Recent File', hasSubmenu: true, disabled: true },
-      { label: 'Import Premiere Mobile Project', hasSubmenu: true, action: () => showToastBanner('Importing mobile project XML...') },
-      { label: 'Create with AI Copilot...', action: () => openVoiceModal() },
-      { label: 'Brainstorm in Neural Canvas...', action: () => showToastBanner('Opening Neural Storyboard Canvas...') },
-      { label: 'Search Media Assets...', action: () => showToastBanner('Searching local media storage cache...') },
+      { label: 'Import Premiere Mobile Project', hasSubmenu: true },
+      { label: 'Create in Adobe Firefly...', action: openVoiceModal },
+      { label: 'Brainstorm in Adobe Firefly Boards...', action: openVoiceModal },
+      { label: 'Search Adobe Stock...' },
       { type: 'divider' },
       {
         label: 'Export',
         hasSubmenu: true,
         submenu: [
-          { label: 'Media...', shortcut: 'Ctrl+M', action: () => openRenderProgressModal() },
-          { label: 'Batch Render Queue...', shortcut: 'Ctrl+B', action: () => setBatchQueueOpen(true) },
-          { label: 'Captions & Subtitles (.vtt)...', action: () => exportSubtitles('vtt') },
-          { label: 'Subtitles (.srt)...', action: () => exportSubtitles('srt') },
-          { label: 'Final Cut Pro XML / EDL...', action: () => showToastBanner('Exported FCP XML timeline conform') },
+          { label: 'Media...', shortcut: 'Ctrl+M', action: openRenderProgressModal },
+          { label: 'Subtitles (SRT / VTT)...', action: () => exportSubtitles('srt') },
+          { label: 'AAF / XML Interchange...' },
+          { label: 'Batch Queue...', shortcut: 'Ctrl+B', action: () => setBatchQueueOpen(true) },
         ],
       },
       { type: 'divider' },
-      {
-        label: 'Get Media File Properties for',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Selected Clip...', action: () => showToastBanner('Selected Clip: 3840×2160 ProRes 422 HQ 60fps') },
-          { label: 'Active Sequence...', action: () => showToastBanner('Sequence: 4K UHD ACEScg Rec.709-A 60.00fps') },
-        ],
-      },
+      { label: 'Get Media File Properties for', hasSubmenu: true },
       { type: 'divider' },
-      {
-        label: 'Project Settings',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'General & Working Codec...', action: () => showToastBanner('Working Codec: Apple ProRes 422 HQ') },
-          { label: 'Color Management (ACEScg)...', action: () => showToastBanner('Color Pipeline: ACEScg / Rec.709-A') },
-          { label: 'Scratch Disks RAID-0...', action: () => showToastBanner('Scratch Disk: D:/Projects/ClipFlow/Cache') },
-          { label: 'Ingest & Auto-Proxy Settings...', action: () => showToastBanner('Auto-proxy: ProRes Proxy 1080p') },
-        ],
-      },
+      { label: 'Project Settings', hasSubmenu: true },
       { label: 'Production Settings', disabled: true },
       { type: 'divider' },
-      { label: 'Project Manager...', action: () => setWelcomeOpen(true) },
+      { label: 'Project Manager...' },
       { type: 'divider' },
-      { label: 'Exit', shortcut: 'Ctrl+Q', action: () => showToastBanner('Exiting ClipFlow Studio. State saved to WAL.') },
+      { label: 'Exit', shortcut: 'Ctrl+Q', action: () => setWelcomeOpen(true) },
     ],
 
     Edit: [
-      { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !canUndo, action: () => undo() },
-      { label: 'Redo', shortcut: 'Ctrl+Shift+Z', disabled: !canRedo, action: () => redo() },
+      { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !canUndo, action: undo },
+      { label: 'Redo', shortcut: 'Ctrl+Shift+Z', disabled: !canRedo, action: redo },
       { type: 'divider' },
-      {
-        label: 'Cut',
-        shortcut: 'Ctrl+X',
-        disabled: !selectedClipId,
-        action: () => {
-          deleteSelectedClip();
-          showToastBanner('Cut clip to clipboard');
-        },
-      },
-      {
-        label: 'Copy',
-        shortcut: 'Ctrl+C',
-        disabled: !selectedClipId,
-        action: () => showToastBanner('Copied clip attributes to clipboard'),
-      },
-      {
-        label: 'Paste',
-        shortcut: 'Ctrl+V',
-        action: () => showToastBanner('Pasted clip at playhead position'),
-      },
+      { label: 'Cut', shortcut: 'Ctrl+X', disabled: !selectedClipId },
+      { label: 'Copy', shortcut: 'Ctrl+C', disabled: !selectedClipId },
+      { label: 'Paste', shortcut: 'Ctrl+V' },
       { label: 'Paste Insert', shortcut: 'Ctrl+Shift+V', disabled: true },
       { label: 'Paste Attributes...', shortcut: 'Ctrl+Alt+V', disabled: true },
       { label: 'Remove Attributes...', disabled: true },
-      {
-        label: 'Clear',
-        shortcut: 'Delete',
-        disabled: !selectedClipId,
-        action: () => deleteSelectedClip(),
-      },
-      {
-        label: 'Ripple Delete',
-        shortcut: 'Shift+Delete',
-        disabled: !selectedClipId,
-        action: () => showToastBanner('Ripple deleted clip & closed gap across sync tracks'),
-      },
+      { label: 'Clear', shortcut: 'Delete', disabled: !selectedClipId, action: deleteSelectedClip },
+      { label: 'Ripple Delete', shortcut: 'Shift+Delete', disabled: true },
       { type: 'divider' },
-      { label: 'Duplicate', shortcut: 'Ctrl+Shift+/', disabled: true },
-      {
-        label: 'Select All',
-        shortcut: 'Ctrl+A',
-        disabled: false,
-        action: () => {
-          if (clips.length > 0) selectClip(clips[0].id);
-          showToastBanner('Selected all clips in sequence');
-        },
-      },
-      { label: 'Select All Matching', disabled: true },
-      {
-        label: 'Deselect All',
-        shortcut: 'Ctrl+Shift+A',
-        disabled: false,
-        action: () => {
-          selectClip(null);
-          showToastBanner('Deselected all clips');
-        },
-      },
+      { label: 'Duplicate', shortcut: 'Ctrl+Shift+/' },
+      { label: 'Select All', shortcut: 'Ctrl+A', action: () => clips[0] && selectClip(clips[0].id) },
+      { label: 'Select All Matching' },
+      { label: 'Deselect All', shortcut: 'Ctrl+Shift+A', action: () => selectClip(null) },
       { type: 'divider' },
-      { label: 'Find...', shortcut: 'Ctrl+F', disabled: true },
+      { label: 'Find...', shortcut: 'Ctrl+F' },
       { label: 'Find Next', disabled: true },
-      {
-        label: 'Spelling',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Check Spelling...', action: () => showToastBanner('Checking transcript and title spelling...') },
-          { label: 'Spelling Settings...', action: () => showToastBanner('Spelling Language: English (US)') },
-        ],
-      },
+      { label: 'Spelling', hasSubmenu: true },
       { type: 'divider' },
-      {
-        label: 'Label',
-        hasSubmenu: true,
-        disabled: !selectedClipId,
-        submenu: [
-          { label: 'Violet', action: () => showToastBanner('Label Color set to Violet') },
-          { label: 'Iris', action: () => showToastBanner('Label Color set to Iris') },
-          { label: 'Caribbean', action: () => showToastBanner('Label Color set to Caribbean') },
-          { label: 'Lavender', action: () => showToastBanner('Label Color set to Lavender') },
-          { label: 'Cerulean', action: () => showToastBanner('Label Color set to Cerulean') },
-          { label: 'Forest', action: () => showToastBanner('Label Color set to Forest') },
-          { label: 'Rose', action: () => showToastBanner('Label Color set to Rose') },
-          { label: 'Mango', action: () => showToastBanner('Label Color set to Mango') },
-          { label: 'Purple', action: () => showToastBanner('Label Color set to Purple') },
-          { label: 'Blue', action: () => showToastBanner('Label Color set to Blue') },
-          { label: 'Teal', action: () => showToastBanner('Label Color set to Teal') },
-          { label: 'Magenta', action: () => showToastBanner('Label Color set to Magenta') },
-          { label: 'Tan', action: () => showToastBanner('Label Color set to Tan') },
-          { label: 'Green', action: () => showToastBanner('Label Color set to Green') },
-          { label: 'Brown', action: () => showToastBanner('Label Color set to Brown') },
-          { label: 'Yellow', action: () => showToastBanner('Label Color set to Yellow') },
-        ],
-      },
+      { label: 'Label', hasSubmenu: true },
       { type: 'divider' },
       { label: 'Remove Unused', disabled: true },
-      {
-        label: 'Consolidate Duplicates',
-        disabled: false,
-        action: () => showToastBanner('Consolidated duplicate footage assets in Media Bin'),
-      },
+      { label: 'Consolidate Duplicates' },
       { label: 'Generate Source Clips for Media', disabled: true },
       { label: 'Reassociate Source Clips...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Team Project',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Get Latest Changes', action: () => showToastBanner('Team Project: Up to date with master branch') },
-          { label: 'Share My Changes...', action: () => showToastBanner('Team Project: Shared sequence changes') },
-          { label: 'Resolve Conflicts...', action: () => showToastBanner('No sync conflicts detected') },
-          { type: 'divider' },
-          { label: 'Convert to Team Project...', action: () => showToastBanner('Converting local SQLite manifest to cloud team sequence...') },
-        ],
-      },
+      { label: 'Team Project', hasSubmenu: true },
       { type: 'divider' },
       { label: 'Edit Original', shortcut: 'Ctrl+E', disabled: true },
-      {
-        label: 'Edit in Adobe Audition',
-        hasSubmenu: true,
-        disabled: true,
-        submenu: [
-          { label: 'Extract Audio to Audition...' },
-        ],
-      },
+      { label: 'Edit in Adobe Audition', hasSubmenu: true, disabled: true },
       { label: 'Edit in Adobe Photoshop', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Keyboard Shortcuts...',
-        shortcut: 'Ctrl+Alt+K',
-        action: () => showToastBanner('Keyboard Shortcuts: Space (Play/Pause), J-K-L, C (Razor), V (Select), Del (Clear)'),
-      },
+      { label: 'Keyboard Shortcuts...', shortcut: 'Ctrl+Alt+K', action: toggleKeyboardHelp },
       {
         label: 'Preferences',
         hasSubmenu: true,
         submenu: [
-          { label: 'General...', action: () => showToastBanner('Preferences: General Settings') },
-          { label: 'Appearance...', action: () => showToastBanner('Preferences: Appearance & Themes') },
-          { label: 'Audio...', action: () => showToastBanner('Preferences: Audio Sample Rate 48kHz') },
-          { label: 'Audio Hardware...', action: () => showToastBanner('Preferences: CoreAudio / ASIO sub-16ms') },
-          { label: 'Auto Save...', action: () => showToastBanner('Preferences: Auto-Save every 30s (WAL mode)') },
-          { label: 'Collaboration...', action: () => showToastBanner('Preferences: Team Sequence Locking') },
-          { label: 'Color...', action: () => showToastBanner('Preferences: ACEScg / Rec.709-A') },
-          { label: 'Media...', action: () => showToastBanner('Preferences: Hardware Decoding Metal/NVENC') },
-          { label: 'Media Cache...', action: () => showToastBanner('Preferences: Scratch Disk Cache Management') },
-          { label: 'Memory & Performance...', action: () => showToastBanner('Preferences: 32 GB RAM allocated to rendering') },
-          { label: 'Playback...', action: () => showToastBanner('Preferences: 60 FPS drop-frame compensation') },
-          { label: 'Timeline...', action: () => showToastBanner('Preferences: Snap threshold 5 frames') },
-          { label: 'Trim...', action: () => showToastBanner('Preferences: Dynamic Ripple Trimming') },
+          { label: 'General...' },
+          { label: 'Appearance...' },
+          { label: 'Audio Hardware...' },
+          { label: 'Auto Save...' },
+          { label: 'Color Management (ACEScg / Rec.709-A)...' },
+          { label: 'Media Cache...' },
+          { label: 'Timeline...' },
         ],
       },
     ],
@@ -336,420 +222,168 @@ export const TopBar: React.FC = () => {
       { label: 'Edit Offline...', disabled: true },
       { label: 'Source Settings...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Modify',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Audio Channels...', action: () => showToastBanner('Configuring track audio channels (5.1 / Stereo)') },
-          { label: 'Interpret Footage...', action: () => showToastBanner('Interpret Footage: 60.00 fps conformed') },
-          { label: 'Timecode...', action: () => showToastBanner('Set starting timecode: 01:00:00:00') },
-          { label: 'Captions...', action: () => showToastBanner('Caption track formatting conformed') },
-        ],
-      },
-      {
-        label: 'Video Options',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Motion...', action: () => showToastBanner('Transform: Scale 100%, Position Center') },
-          { label: 'Frame Hold...', action: () => showToastBanner('Held frame at playhead position') },
-          { label: 'Field Options...', action: () => showToastBanner('Field Order: Progressive 60p') },
-          { label: 'Time Remapping...', action: () => showToastBanner('Speed Ramp & Time Remapping enabled') },
-        ],
-      },
-      {
-        label: 'Audio Options',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Audio Gain...', shortcut: 'G', action: () => showToastBanner('Audio Gain: 0.0 dB (Peak -6.0 dBFS)') },
-          { label: 'Audio Pitch Shifter...', action: () => showToastBanner('Pitch Shift conformed (0 semitones)') },
-          { label: 'Render Audio', action: () => showToastBanner('Rendered audio mix bus') },
-        ],
-      },
+      { label: 'Modify', hasSubmenu: true },
+      { label: 'Video Options', hasSubmenu: true },
+      { label: 'Audio Options', hasSubmenu: true },
       { type: 'divider' },
-      {
-        label: 'Speed/Duration...',
-        shortcut: 'Ctrl+R',
-        action: () => showToastBanner('Speed: 100% (Optical Flow Frame Interpolation)'),
-      },
-      {
-        label: 'Scene Edit Detection...',
-        action: () => showToastBanner('Running AI Scene Edit Detection across cut points...'),
-      },
-      {
-        label: 'Enable Enhance Speech',
-        action: () => showToastBanner('Dialogue enhanced with neural voice isolation (-18 dB)'),
-      },
-      {
-        label: 'Remix',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Enable Remix', action: () => showToastBanner('AI Music Remix enabled: Target 120s') },
-          { label: 'Remix Properties...', action: () => showToastBanner('Remix Segments: Dynamic 8-bar cuts') },
-        ],
-      },
+      { label: 'Speed/Duration...', shortcut: 'Ctrl+R', disabled: !selectedClipId },
+      { label: 'Scene Edit Detection...', disabled: true },
+      { label: 'Enable Enhance Speech', action: quickVoiceIsolation },
+      { label: 'Remix', hasSubmenu: true, disabled: true },
       { type: 'divider' },
-      { label: 'Insert', shortcut: ',', action: () => showToastBanner('Inserted clip into sequence at playhead') },
-      { label: 'Overwrite', shortcut: '.', action: () => showToastBanner('Overwrote clip into sequence at playhead') },
+      { label: 'Insert', shortcut: ',', disabled: true },
+      { label: 'Overwrite', shortcut: '.', disabled: true },
       { type: 'divider' },
       { label: 'Replace Footage...', disabled: true },
-      {
-        label: 'Replace With Clip',
-        hasSubmenu: true,
-        disabled: true,
-        submenu: [
-          { label: 'From Bin' },
-          { label: 'From Source Monitor' },
-          { label: 'From Match Frame' },
-        ],
-      },
+      { label: 'Replace With Clip', hasSubmenu: true, disabled: true },
       { label: 'Render and Replace...', disabled: true },
       { label: 'Restore Unrendered', disabled: true },
       { label: 'Restore Captions from Source Clip', disabled: true },
       { label: 'Update Metadata...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Generate Audio Waveform',
-        action: () => showToastBanner('Peak audio waveforms regenerated across tracks'),
-      },
-      {
-        label: 'Auto-Tag Audio Types',
-        action: () => showToastBanner('Auto-tagged stems: Dialogue (A1-A2), SFX (A3-A7), Score (A8-A9)'),
-      },
+      { label: 'Generate Audio Waveform', disabled: true },
+      { label: 'Auto-Tag Audio Types', disabled: true },
       { type: 'divider' },
       { label: 'Automate to Sequence...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Enable',
-        shortcut: 'Shift+E',
-        disabled: !selectedClipId,
-        action: () => showToastBanner('Clip visibility toggled'),
-      },
-      {
-        label: 'Link',
-        shortcut: 'Ctrl+L',
-        disabled: !selectedClipId,
-        action: () => showToastBanner('Linked video and audio channels'),
-      },
-      {
-        label: 'Group',
-        shortcut: 'Ctrl+G',
-        disabled: !selectedClipId,
-        action: () => showToastBanner('Grouped selected timeline clips'),
-      },
-      { label: 'Ungroup', shortcut: 'Ctrl+Shift+G', disabled: true },
+      { label: 'Enable', shortcut: 'Shift+E' },
+      { label: 'Link', shortcut: 'Ctrl+L' },
+      { label: 'Group', shortcut: 'Ctrl+G' },
+      { label: 'Ungroup', shortcut: 'Ctrl+Shift+G' },
       { label: 'Synchronize...', disabled: true },
       { label: 'Merge Clips...', disabled: true },
-      {
-        label: 'Nest...',
-        disabled: !selectedClipId,
-        action: () => showToastBanner('Nested selected clips into new sub-sequence'),
-      },
+      { label: 'Nest...' },
       { label: 'Create Multi-Camera Source Sequence...', disabled: true },
-      {
-        label: 'Multi-Camera',
-        hasSubmenu: true,
-        disabled: true,
-        submenu: [{ label: 'Enable' }, { label: 'Flatten' }],
-      },
+      { label: 'Multi-Camera', hasSubmenu: true, disabled: true },
     ],
 
     Sequence: [
-      {
-        label: 'Sequence Settings...',
-        action: () => showToastBanner('Sequence: 3840×2160 60.00fps ACEScg Rec.709-A'),
-      },
+      { label: 'Sequence Settings...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Render Effects in Work Area',
-        shortcut: 'Enter',
-        action: () => openRenderProgressModal(),
-      },
-      { label: 'Render Entire Work Area', action: () => openRenderProgressModal() },
-      { label: 'Render Selection', action: () => openRenderProgressModal() },
-      { label: 'Render Audio', action: () => showToastBanner('Rendered audio mix bus') },
-      { label: 'Delete Render Files', action: () => showToastBanner('Deleted scratch preview files') },
-      { label: 'Delete Work Area Render Files', action: () => showToastBanner('Deleted work area preview files') },
+      { label: 'Render Effects in Work Area', shortcut: 'Enter', action: openRenderProgressModal },
+      { label: 'Render Entire Work Area', action: openRenderProgressModal },
+      { label: 'Render Selection', disabled: true },
+      { label: 'Render Audio', action: openRenderProgressModal },
+      { label: 'Delete Render Files', disabled: true },
+      { label: 'Delete Work Area Render Files', disabled: true },
       { type: 'divider' },
-      { label: 'Match Frame', shortcut: 'F', action: () => showToastBanner('Matched Source Monitor frame (F)') },
-      { label: 'Reverse Match Frame', shortcut: 'Shift+R', action: () => showToastBanner('Reverse matched timeline frame') },
+      { label: 'Match Frame', shortcut: 'F' },
+      { label: 'Reverse Match Frame', shortcut: 'Shift+R' },
       { type: 'divider' },
-      { label: 'Add Edit', shortcut: 'Ctrl+K', action: () => splitClipAtPlayhead() },
-      { label: 'Add Edit to All Tracks', shortcut: 'Ctrl+Shift+K', action: () => splitClipAtPlayhead() },
-      { label: 'Trim Edit', shortcut: 'Shift+T', action: () => showToastBanner('Trim edit mode activated') },
-      { label: 'Extend Selected Edit to Playhead', shortcut: 'E', action: () => showToastBanner('Extended edit point to playhead') },
+      { label: 'Add Edit', shortcut: 'Ctrl+K', action: splitClipAtPlayhead },
+      { label: 'Add Edit to All Tracks', shortcut: 'Ctrl+Shift+K', action: splitClipAtPlayhead },
+      { label: 'Trim Edit', shortcut: 'Shift+T' },
+      { label: 'Extend Selected Edit to Playhead', shortcut: 'E' },
       { type: 'divider' },
-      { label: 'Apply Video Transition', shortcut: 'Ctrl+D', action: () => showToastBanner('Applied Cross Dissolve') },
-      { label: 'Apply Audio Transition', shortcut: 'Ctrl+Shift+D', action: () => showToastBanner('Applied Constant Power Crossfade') },
-      { label: 'Apply Default Transitions to Selection', shortcut: 'Shift+D', action: () => showToastBanner('Applied default transitions to selection') },
+      { label: 'Apply Video Transition', shortcut: 'Ctrl+D' },
+      { label: 'Apply Audio Transition', shortcut: 'Ctrl+Shift+D' },
+      { label: 'Apply Default Transitions to Selection', shortcut: 'Shift+D' },
       { type: 'divider' },
-      { label: 'Lift', shortcut: ';', action: () => showToastBanner('Lifted range between In/Out points') },
-      { label: 'Extract', shortcut: "'", action: () => showToastBanner('Extracted range & closed ripple gap') },
+      { label: 'Lift', shortcut: ';' },
+      { label: 'Extract', shortcut: '\'' },
       { type: 'divider' },
       { label: 'Zoom In', shortcut: '=', action: () => setTimelineZoom(timelineZoom + 15) },
       { label: 'Zoom Out', shortcut: '-', action: () => setTimelineZoom(timelineZoom - 15) },
       { type: 'divider' },
-      { label: 'Close Gap', action: () => showToastBanner('Closed track gap') },
-      {
-        label: 'Go to Gap',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Next in Sequence', action: () => showToastBanner('Jumped to next track gap') },
-          { label: 'Previous in Sequence', action: () => showToastBanner('Jumped to previous track gap') },
-        ],
-      },
+      { label: 'Close Gap', action: quickAutoCutSilence },
+      { label: 'Go to Gap', hasSubmenu: true },
       { type: 'divider' },
-      { label: 'Snap in Timeline', shortcut: 'S', action: () => toggleSnapping() },
-      { label: 'Linked Selection', action: () => showToastBanner('Linked selection toggled') },
-      { label: 'Selection Follows Playhead', action: () => showToastBanner('Selection follows playhead enabled') },
-      { label: 'Show Through Edits', action: () => showToastBanner('Showing through edits') },
+      { label: 'Snap in Timeline', shortcut: 'S', checked: snappingEnabled, action: toggleSnapping },
+      { label: 'Linked Selection', checked: true },
+      { label: 'Selection Follows Playhead', checked: true },
+      { label: 'Show Through Edits', checked: true },
       { type: 'divider' },
-      { label: 'Normalize Mix Track...', action: () => showToastBanner('Master mix normalized to -14.0 LUFS') },
+      { label: 'Normalize Mix Track...', disabled: true },
       { type: 'divider' },
-      { label: 'Make Subsequence', shortcut: 'Shift+U', action: () => showToastBanner('Created subsequence from In/Out range') },
+      { label: 'Make Subsequence', shortcut: 'Shift+U' },
       { type: 'divider' },
-      { label: 'Auto Reframe Sequence...', action: () => quickSocialReframe() },
-      { label: 'Transcribe Sequence...', action: () => quickAutoSubtitles() },
-      { label: 'Simplify Sequence...', action: () => showToastBanner('Simplified sequence tracks') },
+      { label: 'Auto Reframe Sequence...', action: quickSocialReframe },
+      { label: 'Transcribe Sequence...', action: quickAutoSubtitles },
+      { label: 'Simplify Sequence...' },
       { type: 'divider' },
-      { label: 'Add Tracks...', action: () => showToastBanner('Added Video V4 & Audio A10 tracks') },
-      { label: 'Delete Tracks...', action: () => showToastBanner('Deleted empty tracks') },
+      { label: 'Add Tracks...' },
+      { label: 'Delete Tracks...' },
       { type: 'divider' },
-      {
-        label: 'Captions',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Create Captions from Transcript...', action: () => quickAutoSubtitles() },
-          { label: 'Add New Caption Track...', action: () => showToastBanner('Added CC2 Secondary Subtitle track') },
-          { label: 'Import Subtitle File (.srt/.vtt)...', action: () => showToastBanner('Imported subtitles file') },
-        ],
-      },
+      { label: 'Captions', hasSubmenu: true },
     ],
 
     Markers: [
-      { label: 'Mark In', shortcut: 'I', action: () => setInPoint() },
-      { label: 'Mark Out', shortcut: 'O', action: () => setOutPoint() },
-      { label: 'Mark Clip', shortcut: 'X', action: () => showToastBanner('Marked In/Out to selected clip') },
-      { label: 'Mark Selection', shortcut: '/', action: () => showToastBanner('Marked In/Out to selection') },
-      {
-        label: 'Mark Split',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Mark In Split', action: () => showToastBanner('Marked In Split') },
-          { label: 'Mark Out Split', action: () => showToastBanner('Marked Out Split') },
-        ],
-      },
+      { label: 'Mark In', shortcut: 'I', action: setInPoint },
+      { label: 'Mark Out', shortcut: 'O', action: setOutPoint },
+      { label: 'Mark Clip', shortcut: 'X' },
+      { label: 'Mark Selection', shortcut: '/' },
+      { label: 'Mark Split', hasSubmenu: true },
       { type: 'divider' },
-      {
-        label: 'Go to In',
-        shortcut: 'Shift+I',
-        action: () => {
-          if (inPoint !== null) setCurrentTime(inPoint);
-          showToastBanner('Playhead jumped to In Point');
-        },
-      },
-      {
-        label: 'Go to Out',
-        shortcut: 'Shift+O',
-        action: () => {
-          if (outPoint !== null) setCurrentTime(outPoint);
-          showToastBanner('Playhead jumped to Out Point');
-        },
-      },
-      {
-        label: 'Go to Split',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Go to In Split', action: () => showToastBanner('Jumped to In Split') },
-          { label: 'Go to Out Split', action: () => showToastBanner('Jumped to Out Split') },
-        ],
-      },
+      { label: 'Go to In', shortcut: 'Shift+I', action: () => inPoint !== null && setCurrentTime(inPoint) },
+      { label: 'Go to Out', shortcut: 'Shift+O', action: () => outPoint !== null && setCurrentTime(outPoint) },
+      { label: 'Go to Split', hasSubmenu: true },
       { type: 'divider' },
-      { label: 'Clear In', shortcut: 'Ctrl+Shift+I', action: () => clearInOut() },
-      { label: 'Clear Out', shortcut: 'Ctrl+Shift+O', action: () => clearInOut() },
-      { label: 'Clear In and Out', shortcut: 'Ctrl+Shift+X', action: () => clearInOut() },
+      { label: 'Clear In', shortcut: 'Ctrl+Shift+I', action: clearInOut },
+      { label: 'Clear Out', shortcut: 'Ctrl+Shift+O', action: clearInOut },
+      { label: 'Clear In and Out', shortcut: 'Ctrl+Shift+X', action: clearInOut },
       { type: 'divider' },
-      { label: 'Add Marker', shortcut: 'M', action: () => showToastBanner('Added Marker at current timecode') },
-      { label: 'Add Range Marker', shortcut: 'Ctrl+Alt+Shift+N', action: () => showToastBanner('Added Range Marker') },
-      { label: 'Add Range Marker to In and Out', shortcut: 'Alt+Shift+N', action: () => showToastBanner('Added Range Marker between In and Out') },
-      { label: 'Go to Next Marker', shortcut: 'Shift+M', action: () => showToastBanner('Jumped to Next Marker') },
-      { label: 'Go to Previous Marker', shortcut: 'Ctrl+Shift+M', action: () => showToastBanner('Jumped to Previous Marker') },
+      { label: 'Add Marker', shortcut: 'M', action: () => showToastBanner(`Marker added at ${secondsToSMPTE(currentTime, frameRate)}`) },
+      { label: 'Add Range Marker', shortcut: 'Ctrl+Alt+Shift+N' },
+      { label: 'Add Range Marker to In and Out', shortcut: 'Alt+Shift+N' },
+      { label: 'Go to Next Marker', shortcut: 'Shift+M' },
+      { label: 'Go to Previous Marker', shortcut: 'Ctrl+Shift+M' },
       { type: 'divider' },
-      { label: 'Clear Selected Marker', shortcut: 'Ctrl+Alt+M', action: () => showToastBanner('Cleared Selected Marker') },
-      { label: 'Clear Markers', shortcut: 'Ctrl+Alt+Shift+M', action: () => showToastBanner('Cleared all timeline markers') },
-      { label: 'Show All Marker Colors', action: () => showToastBanner('Showing all marker color tags') },
+      { label: 'Clear Selected Marker', shortcut: 'Ctrl+Alt+M' },
+      { label: 'Clear Markers', shortcut: 'Ctrl+Alt+Shift+M' },
+      { label: 'Show All Marker Colors' },
       { type: 'divider' },
-      { label: 'Edit Marker...', action: () => showToastBanner('Marker Name: Chapter 01 | Color: Cyan') },
+      { label: 'Edit Marker...' },
       { type: 'divider' },
-      { label: 'Add Chapter Marker...', action: () => showToastBanner('Added YouTube Chapter Marker') },
-      { label: 'Add Flash Cue Marker...', action: () => showToastBanner('Added Flash Cue Marker') },
+      { label: 'Add Chapter Marker...' },
+      { label: 'Add Flash Cue Marker...' },
       { type: 'divider' },
-      { label: 'Ripple Sequence Markers', action: () => showToastBanner('Sequence markers lock to ripple edit') },
-      { label: 'Copy Paste Includes Sequence Markers', action: () => showToastBanner('Markers copied with clip blocks') },
+      { label: 'Ripple Sequence Markers' },
+      { label: 'Copy Paste Includes Sequence Markers' },
     ],
 
     'Graphics and Titles': [
-      { label: 'Add Fonts from Adobe Fonts...', action: () => showToastBanner('Opening Typography Catalog...') },
-      { label: 'Install Motion Graphics Template...', action: () => showToastBanner('Installed .mogrt motion graphic template') },
+      { label: 'Add Fonts from Adobe Fonts...' },
+      { label: 'Install Motion Graphics Template...' },
       { type: 'divider' },
-      {
-        label: 'New Layer',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Text', action: () => showToastBanner('Added Text Layer on V2') },
-          { label: 'Vertical Text', action: () => showToastBanner('Added Vertical Text Layer') },
-          { label: 'Rectangle', action: () => showToastBanner('Added Rectangle Shape') },
-          { label: 'Ellipse', action: () => showToastBanner('Added Ellipse Shape') },
-          { label: 'From File...', action: () => showToastBanner('Imported graphics file') },
-        ],
-      },
+      { label: 'New Layer', hasSubmenu: true },
       { type: 'divider' },
-      {
-        label: 'Align to Video Frame',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Horizontal Center', action: () => showToastBanner('Aligned to Horizontal Center') },
-          { label: 'Vertical Center', action: () => showToastBanner('Aligned to Vertical Center') },
-          { label: 'Left', action: () => showToastBanner('Aligned to Left Frame') },
-          { label: 'Right', action: () => showToastBanner('Aligned to Right Frame') },
-          { label: 'Top', action: () => showToastBanner('Aligned to Top Frame') },
-          { label: 'Bottom', action: () => showToastBanner('Aligned to Bottom Frame') },
-        ],
-      },
-      {
-        label: 'Align to Video Frame as Group',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Horizontal Center', action: () => showToastBanner('Group aligned to Horizontal Center') },
-          { label: 'Vertical Center', action: () => showToastBanner('Group aligned to Vertical Center') },
-        ],
-      },
-      {
-        label: 'Align to Selection',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Left Edges' },
-          { label: 'Horizontal Centers' },
-          { label: 'Right Edges' },
-          { label: 'Top Edges' },
-          { label: 'Vertical Centers' },
-          { label: 'Bottom Edges' },
-        ],
-      },
-      {
-        label: 'Distribute',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Horizontally', action: () => showToastBanner('Distributed graphics horizontally') },
-          { label: 'Vertically', action: () => showToastBanner('Distributed graphics vertically') },
-        ],
-      },
-      {
-        label: 'Arrange',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Bring to Front', action: () => showToastBanner('Brought graphic to front') },
-          { label: 'Bring Forward', action: () => showToastBanner('Brought graphic forward') },
-          { label: 'Send Backward', action: () => showToastBanner('Sent graphic backward') },
-          { label: 'Send to Back', action: () => showToastBanner('Sent graphic to back') },
-        ],
-      },
-      {
-        label: 'Select',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Next Layer Above' },
-          { label: 'Next Layer Below' },
-        ],
-      },
+      { label: 'Align to Video Frame', hasSubmenu: true },
+      { label: 'Align to Video Frame as Group', hasSubmenu: true },
+      { label: 'Align to Selection', hasSubmenu: true },
+      { label: 'Distribute', hasSubmenu: true },
+      { label: 'Arrange', hasSubmenu: true },
+      { label: 'Select', hasSubmenu: true },
       { type: 'divider' },
-      { label: 'Upgrade to Source Graphic', action: () => showToastBanner('Upgraded graphic to master source') },
-      { label: 'Upgrade Caption to Graphic', action: () => showToastBanner('Upgraded caption to motion graphic') },
-      { label: 'Reset All Parameters', action: () => showToastBanner('Reset title parameters to default') },
-      { label: 'Reset Duration', action: () => showToastBanner('Reset graphic duration to 5.0s') },
+      { label: 'Upgrade to Source Graphic', disabled: true },
+      { label: 'Upgrade Caption to Graphic', disabled: true },
+      { label: 'Reset All Parameters', disabled: true },
+      { label: 'Reset Duration', disabled: true },
       { type: 'divider' },
-      { label: 'Export As Motion Graphics Template...', action: () => showToastBanner('Exported .mogrt template') },
+      { label: 'Export As Motion Graphics Template...', disabled: true },
       { type: 'divider' },
-      { label: 'Replace Fonts in Projects...', action: () => showToastBanner('Replace font dialog opened') },
+      { label: 'Replace Fonts in Projects...' },
     ],
 
     View: [
-      {
-        label: 'Playback Resolution',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Full', action: () => showToastBanner('Playback Resolution: Full (3840×2160)') },
-          { label: '1/2', action: () => showToastBanner('Playback Resolution: 1/2 (1920×1080)') },
-          { label: '1/4', action: () => showToastBanner('Playback Resolution: 1/4 (960×540)') },
-          { label: '1/8', action: () => showToastBanner('Playback Resolution: 1/8 (480×270)') },
-          { label: '1/16', action: () => showToastBanner('Playback Resolution: 1/16 (240×135)') },
-        ],
-      },
-      {
-        label: 'Paused Resolution',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Full', action: () => showToastBanner('Paused Resolution: Full (3840×2160)') },
-          { label: '1/2', action: () => showToastBanner('Paused Resolution: 1/2') },
-          { label: '1/4', action: () => showToastBanner('Paused Resolution: 1/4') },
-        ],
-      },
-      { label: 'High Quality Playback', action: () => showToastBanner('High Quality 10-bit playback enabled') },
+      { label: 'Playback Resolution', hasSubmenu: true },
+      { label: 'Paused Resolution', hasSubmenu: true, disabled: true },
+      { label: 'High Quality Playback', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Display Mode',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Composite Video', action: () => showToastBanner('Display: Composite Video') },
-          { label: 'Alpha', action: () => showToastBanner('Display: Alpha Channel') },
-          { label: 'Multi-Camera', action: () => showToastBanner('Display: Multi-Camera 4-Up') },
-          { label: 'Comparison View', action: () => showToastBanner('Display: Split Comparison View') },
-        ],
-      },
-      {
-        label: 'Magnification',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Fit', action: () => showToastBanner('Magnification: Fit Window (42%)') },
-          { label: '10%', action: () => showToastBanner('Magnification: 10%') },
-          { label: '25%', action: () => showToastBanner('Magnification: 25%') },
-          { label: '50%', action: () => showToastBanner('Magnification: 50%') },
-          { label: '75%', action: () => showToastBanner('Magnification: 75%') },
-          { label: '100%', action: () => showToastBanner('Magnification: 100% 1:1 Pixel') },
-          { label: '150%', action: () => showToastBanner('Magnification: 150%') },
-          { label: '200%', action: () => showToastBanner('Magnification: 200%') },
-          { label: '400%', action: () => showToastBanner('Magnification: 400%') },
-        ],
-      },
+      { label: 'Display Mode', hasSubmenu: true },
+      { label: 'Magnification', hasSubmenu: true },
       { type: 'divider' },
-      { label: 'Show Rulers', shortcut: 'Ctrl+R', action: () => showToastBanner('Program Monitor pixel rulers toggled') },
-      { label: 'Show Guides', shortcut: 'Ctrl+;', action: () => showToastBanner('Composition guides toggled') },
-      { label: 'Lock Guides', action: () => showToastBanner('Guides locked in position') },
-      { label: 'Add Guide...', action: () => showToastBanner('Add guide at coordinate') },
-      { label: 'Clear Guides', action: () => showToastBanner('Guides cleared') },
+      { label: 'Show Rulers', disabled: true },
+      { label: 'Show Guides', disabled: true },
+      { label: 'Lock Guides', disabled: true },
+      { label: 'Add Guide...', disabled: true },
+      { label: 'Clear Guides', disabled: true },
       { type: 'divider' },
-      { label: 'Snap in Program Monitor', action: () => showToastBanner('Program Monitor canvas snapping active') },
+      { label: 'Snap in Program Monitor', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Guide Templates',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Action / Title Safe 90%/80%', action: () => toggleSafeMargins() },
-          { label: 'Social 9:16 Guides', action: () => showToastBanner('Social 9:16 safe area overlay displayed') },
-          { label: 'Cinemascope 2.39:1 Overlay', action: () => showToastBanner('2.39:1 letterbox guides displayed') },
-          { label: 'Rule of Thirds 3×3 Grid', action: () => showToastBanner('Rule of thirds grid overlay displayed') },
-        ],
-      },
+      { label: 'Guide Templates', hasSubmenu: true },
       { type: 'divider' },
-      {
-        label: 'Dynamic Audio Waveforms',
-        checked: true,
-        action: () => showToastBanner('Dynamic audio waveforms enabled'),
-      },
-      {
-        label: 'Show Filmstrip Thumbnails',
-        checked: true,
-        action: () => showToastBanner('Filmstrip thumbnails displayed on video tracks'),
-      },
+      { label: 'Dynamic Audio Waveforms', checked: true },
+      { label: 'Safe Margins', checked: isSafeMarginsActive, action: toggleSafeMargins },
     ],
 
     Window: [
@@ -757,112 +391,82 @@ export const TopBar: React.FC = () => {
         label: 'Workspaces',
         hasSubmenu: true,
         submenu: [
-          { label: 'All Panels', action: () => showToastBanner('Workspace: All Panels') },
-          { label: 'Assembly', action: () => showToastBanner('Workspace: Assembly') },
-          { label: 'Audio', action: () => setActiveWorkspace('audio') },
-          { label: 'Captions and Graphics', action: () => setActiveWorkspace('graphics') },
-          { label: 'Color', action: () => setActiveWorkspace('color') },
+          { label: 'Learning', action: () => setActiveWorkspace('editing') },
           { label: 'Editing', action: () => setActiveWorkspace('editing') },
-          { label: 'Effects', action: () => showToastBanner('Workspace: Effects') },
-          { label: 'Learning', action: () => showToastBanner('Workspace: Learning') },
-          { label: 'Libraries', action: () => showToastBanner('Workspace: Libraries') },
-          { label: 'Metal / WebGPU Review', action: () => showToastBanner('Workspace: WebGPU Review') },
-          { label: 'Production', action: () => showToastBanner('Workspace: Production') },
-          { label: 'Simple', action: () => showToastBanner('Workspace: Simple') },
-          { label: 'Vertical', action: () => quickSocialReframe() },
+          { label: 'Color', action: () => setActiveWorkspace('color') },
+          { label: 'Audio', action: () => setActiveWorkspace('audio') },
+          { label: 'Graphics', action: () => setActiveWorkspace('graphics') },
           { type: 'divider' },
-          { label: 'Reset to Saved Layout', action: () => showToastBanner('Layout restored to default') },
-          { label: 'Save Changes to this Workspace', action: () => showToastBanner('Workspace layout saved') },
-          { label: 'Save as New Workspace...', action: () => showToastBanner('Saved as custom workspace layout') },
+          { label: 'Reset to Saved Layout', action: () => showToastBanner('Workspace layout reset') },
         ],
       },
-      { label: 'Find Extensions on Exchange...', action: () => showToastBanner('Opening Extensions Exchange...') },
+      { label: 'Find Extensions on Exchange...', disabled: true },
       { type: 'divider' },
-      {
-        label: 'Extensions',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'ClipFlow AI Assistant' },
-          { label: 'Cloud Sequence Review' },
-        ],
-      },
-      {
-        label: 'UXP Plugins',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Manage Plugins...' },
-        ],
-      },
+      { label: 'Extensions', hasSubmenu: true },
+      { label: 'UXP Plugins', hasSubmenu: true },
       { type: 'divider' },
-      { label: 'Maximize Frame', shortcut: 'Shift+`', action: () => showToastBanner('Frame maximized to full display') },
+      { label: 'Maximize Frame', shortcut: 'Shift+`' },
       { type: 'divider' },
       { label: 'Audio Clip Effect Editor', disabled: true },
       { label: 'Audio Track Effect Editor', disabled: true },
       { type: 'divider' },
-      { label: 'Adobe Stock', action: () => showToastBanner('Opening Stock Assets Library...') },
-      { label: 'Audio Clip Mixer', shortcut: 'Shift+9', action: () => showToastBanner('Audio Clip Mixer opened') },
-      { label: 'Audio Meters', checked: true, action: () => showToastBanner('Master Audio Meters active') },
-      { label: 'Audio Track Mixer', shortcut: 'Shift+6', action: () => showToastBanner('Audio Track Mixer opened') },
-      { label: 'Effect Controls', shortcut: 'Shift+5', action: () => showToastBanner('Effect Controls opened') },
-      { label: 'Effects', shortcut: 'Shift+7', action: () => showToastBanner('Effects dock focused') },
-      { label: 'Essential Sound', action: () => showToastBanner('Essential Sound opened') },
-      { label: 'Events', action: () => showToastBanner('Events log opened') },
-      {
-        label: 'Frame.io',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Frame.io Review Links...' },
-          { label: 'Upload Sequence to Frame.io...' },
-        ],
-      },
-      { label: 'Graphics Templates', action: () => showToastBanner('Graphics Templates opened') },
-      { label: 'History', action: () => showToastBanner('History Snapshot journal opened') },
-      { label: 'Info', action: () => showToastBanner('Clip metadata info displayed') },
-      { label: 'Learn', checked: true, action: () => showToastBanner('Learn & Tutorials panel focused') },
-      { label: 'Libraries', action: () => showToastBanner('Creative Cloud Libraries opened') },
-      { label: 'Lumetri Color', action: () => setActiveWorkspace('color') },
-      { label: 'Lumetri Scopes', action: () => showToastBanner('Parade & Vectorscope monitors opened') },
-      { label: 'Markers', action: () => showToastBanner('Markers panel opened') },
-      { label: 'Media Browser', shortcut: 'Shift+8', checked: true, action: () => showToastBanner('Media Browser panel opened') },
-      { label: 'Metadata', action: () => showToastBanner('Metadata panel opened') },
-      { label: 'Production', action: () => showToastBanner('Production panel opened') },
-      { label: 'Program Monitor', shortcut: 'Shift+4', checked: true, action: () => showToastBanner('Program Monitor focused') },
-      { label: 'Progress', action: () => setBatchQueueOpen(true) },
-      {
-        label: 'Projects',
-        hasSubmenu: true,
-        submenu: [
-          { label: 'Cyberpunk_Narrative_Commercial_4K.cfs' },
-          { label: 'Recent Projects...' },
-        ],
-      },
-      { label: 'Properties', checked: true, action: () => showToastBanner('Properties panel focused') },
-      { label: 'Search', action: () => showToastBanner('Search panel opened') },
-      { label: 'Sequence Index', action: () => showToastBanner('Sequence Index opened') },
-      { label: 'Source Monitor', shortcut: 'Shift+2', checked: true, action: () => showToastBanner('Source Monitor focused') },
-      { label: 'Text', action: () => showToastBanner('Text & Diarized Transcript dock focused') },
-      { label: 'Timecode', action: () => showToastBanner('Big SMPTE Timecode display opened') },
-      { label: 'Timeline', shortcut: 'Shift+3', checked: true, action: () => showToastBanner('Timeline focused') },
-      { label: 'Tools', checked: true, action: () => showToastBanner('Tools bar active') },
+      { label: 'Adobe Stock' },
+      { label: 'Audio Clip Mixer', shortcut: 'Shift+9' },
+      { label: 'Audio Meters', checked: true },
+      { label: 'Audio Track Mixer', shortcut: 'Shift+6' },
+      { label: 'Effect Controls', shortcut: 'Shift+5' },
+      { label: 'Effects', shortcut: 'Shift+7' },
+      { label: 'Essential Sound' },
+      { label: 'Events' },
+      { label: 'Frame.io', hasSubmenu: true },
+      { label: 'Graphics Templates' },
+      { label: 'History' },
+      { label: 'Info' },
+      { label: 'Learn', checked: true },
+      { label: 'Libraries' },
+      { label: 'Lumetri Color' },
+      { label: 'Lumetri Scopes' },
+      { label: 'Markers' },
+      { label: 'Media Browser', shortcut: 'Shift+8', checked: true },
+      { label: 'Metadata' },
+      { label: 'Production' },
+      { label: 'Program Monitor', shortcut: 'Shift+4', checked: true },
+      { label: 'Progress' },
+      { label: 'Projects', hasSubmenu: true },
+      { label: 'Properties', checked: isInspectorOpen, action: toggleInspector },
+      { label: 'Search' },
+      { label: 'Sequence Index' },
+      { label: 'Source Monitor', shortcut: 'Shift+2', checked: true },
+      { label: 'Text' },
+      { label: 'Timecode' },
+      { label: 'Timeline', shortcut: 'Shift+3', checked: true },
+      { label: 'Tools', checked: true },
     ],
 
     Help: [
-      { label: 'ClipFlow Studio 2.1.0 Documentation', action: () => showToastBanner('Opening Documentation Manual') },
-      { label: 'Keyboard Shortcuts Cheat Sheet', shortcut: 'Ctrl+Alt+K', action: () => showToastBanner('Shortcuts: J-K-L, Space, I, O, C, V, M, Del') },
-      { label: 'Release Notes & Neural Model Status', action: () => showToastBanner('WebGPU / CoreML Neural Models: 120 FPS Ready') },
+      { label: 'Premiere Pro Help...', shortcut: 'F1' },
+      { label: 'ClipFlow 2.1 Documentation...', action: () => showToastBanner('ClipFlow Studio v2.1.0 Docs') },
+      { label: 'Keyboard Shortcuts...', shortcut: '?', action: toggleKeyboardHelp },
       { type: 'divider' },
-      { label: 'Check for Updates...', action: () => showToastBanner('ClipFlow Studio v2.1.0 is up to date') },
-      { label: 'About ClipFlow Studio...', action: () => setWelcomeOpen(true) },
+      { label: 'AI Copilot & Neural Pipeline Telemetry...', action: openVoiceModal },
+      { label: 'Silence Removal Automation Guide...', action: quickAutoCutSilence },
+      { type: 'divider' },
+      { label: 'About Adobe Premiere Pro...', action: () => setWelcomeOpen(true) },
     ],
   };
 
-  const handleMenuClick = (menu: string) => {
-    setActiveMenu(activeMenu === menu ? null : menu);
-    setActiveSubmenu(null);
+  const handleMenuClick = (menuName: string) => {
+    if (activeMenu === menuName) {
+      setActiveMenu(null);
+      setActiveSubmenu(null);
+    } else {
+      setActiveMenu(menuName);
+      setActiveSubmenu(null);
+    }
   };
 
-  const handleSubmenuEnter = (label: string) => {
-    setActiveSubmenu(label);
+  const handleSubmenuEnter = (itemLabel: string) => {
+    setActiveSubmenu(itemLabel);
   };
 
   const closeAllMenus = () => {
@@ -870,278 +474,314 @@ export const TopBar: React.FC = () => {
     setActiveSubmenu(null);
   };
 
-  const workspaces: { id: WorkspaceLayout; label: string }[] = [
-    { id: 'editing', label: 'Editing' },
-    { id: 'color', label: 'Color' },
-    { id: 'audio', label: 'Audio' },
-    { id: 'graphics', label: 'Graphics' },
+  const workspacesList: { id: WorkspaceLayout; label: string }[] = [
+    { id: 'editing', label: 'LEARNING' },
+    { id: 'editing', label: 'EDITING' },
+    { id: 'color', label: 'COLOR' },
+    { id: 'audio', label: 'AUDIO' },
+    { id: 'graphics', label: 'GRAPHICS' },
   ];
 
   return (
-    <header className="relative z-50 flex items-center justify-between px-2 h-9 w-full bg-nle-header border-b border-nle-border text-xs select-none">
-      {/* Left: App Logo, Home Icon, Menu Bar */}
-      <div ref={menuBarRef} className="flex items-center gap-1">
-        {/* Home / Projects Dashboard Button */}
-        <button
-          onClick={() => setWelcomeOpen(true)}
-          className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-nle-panel text-nle-text transition-colors"
-          title="Open Project Dashboard (Ctrl+O)"
-        >
-          <span className="material-symbols-outlined text-[17px] text-nle-accent">movie_filter</span>
-          <span className="font-bold tracking-tight text-white text-[12px] hidden md:inline">
-            ClipFlow <span className="text-nle-accent font-mono text-[9px]">2.1</span>
+    <div className="flex flex-col w-full select-none shrink-0 z-50">
+      {/* ============================================================ */}
+      {/* TIER 1: Windows OS Title Bar (Matching Real Premiere Pro)     */}
+      {/* ============================================================ */}
+      <div className="h-6 bg-[#1a1a1a] border-b border-[#2d2d2d] flex items-center justify-between px-2 text-[11px] text-[#a0a0a0]">
+        <div className="flex items-center gap-2 truncate">
+          {/* Authentic Adobe Premiere "Pr" Logo Icon */}
+          <div className="w-4 h-4 rounded-[2px] bg-[#00005b] text-[#8ea4ff] font-bold text-[9px] flex items-center justify-center leading-none shadow-sm">
+            Pr
+          </div>
+          <span className="truncate tracking-tight font-sans text-[#b0b0b0]">
+            Adobe Premiere - C:\Users\DHAIRYA GULATI\Documents\Adobe\Premiere Pro\26.0\Untitled *
           </span>
-        </button>
-
-        <div className="h-3.5 w-[1px] bg-nle-border mx-1" />
-
-        {/* Global Menu Bar Items */}
-        <div className="relative flex items-center">
-          {Object.keys(menuDefinitions).map((menuName) => {
-            const isMenuOpen = activeMenu === menuName;
-            return (
-              <div key={menuName} className="relative">
-                <button
-                  onClick={() => handleMenuClick(menuName)}
-                  onMouseEnter={() => activeMenu && handleMenuClick(menuName)}
-                  className={`px-2 py-1 rounded text-[11px] font-normal transition-colors ${
-                    isMenuOpen ? 'bg-nle-border text-white font-medium' : 'text-nle-dim hover:text-white hover:bg-nle-panel'
-                  }`}
-                >
-                  {menuName}
-                </button>
-
-                {/* Dropdown Menu Window */}
-                {isMenuOpen && (
-                  <div
-                    className="absolute left-0 top-full mt-0.5 w-64 py-1 bg-[#18181b] border border-[#27272a] rounded shadow-2xl z-50 text-[11px] animate-in fade-in duration-75"
-                    onMouseLeave={() => setActiveSubmenu(null)}
-                  >
-                    {menuDefinitions[menuName].map((item, idx) => {
-                      if (item.type === 'divider') {
-                        return <div key={`div-${idx}`} className="h-[1px] bg-[#27272a] my-1" />;
-                      }
-
-                      const isDisabled = !!item.disabled;
-                      const hasSub = !!item.hasSubmenu;
-                      const isSubOpen = activeSubmenu === item.label;
-
-                      return (
-                        <div
-                          key={`item-${idx}`}
-                          className="relative"
-                          onMouseEnter={() => hasSub && handleSubmenuEnter(item.label!)}
-                        >
-                          <button
-                            disabled={isDisabled}
-                            onClick={() => {
-                              if (!hasSub && item.action) {
-                                item.action();
-                                closeAllMenus();
-                              }
-                            }}
-                            className={`w-full px-3 py-1 flex items-center justify-between text-left transition-colors ${
-                              isDisabled
-                                ? 'text-[#71717a] cursor-default'
-                                : isSubOpen
-                                ? 'bg-nle-accent/20 text-white font-medium'
-                                : 'text-[#f4f4f5] hover:bg-nle-panel hover:text-white'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 truncate">
-                              {item.checked !== undefined ? (
-                                <span className={`text-[11px] font-bold w-3 text-center ${item.checked ? 'text-white' : 'text-transparent'}`}>
-                                  ✓
-                                </span>
-                              ) : null}
-                              <span className="truncate">{item.label}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {item.shortcut && (
-                                <span className="text-3xs text-[#a1a1aa] font-mono tracking-wider">
-                                  {item.shortcut}
-                                </span>
-                              )}
-                              {hasSub && (
-                                <span className="text-3xs text-[#71717a] font-mono leading-none">
-                                  ›
-                                </span>
-                              )}
-                            </div>
-                          </button>
-
-                          {/* Flyout Submenu */}
-                          {hasSub && isSubOpen && item.submenu && (
-                            <div className="absolute left-full top-0 ml-0.5 w-56 py-1 bg-[#18181b] border border-[#27272a] rounded shadow-2xl z-50 text-[11px] animate-in fade-in duration-75">
-                              {item.submenu.map((sub, sIdx) => {
-                                if (sub.type === 'divider') {
-                                  return <div key={`sdiv-${sIdx}`} className="h-[1px] bg-[#27272a] my-1" />;
-                                }
-                                return (
-                                  <button
-                                    key={`sitem-${sIdx}`}
-                                    onClick={() => {
-                                      if (sub.action) sub.action();
-                                      closeAllMenus();
-                                    }}
-                                    className="w-full px-3 py-1 flex items-center justify-between text-left text-[#f4f4f5] hover:bg-nle-panel hover:text-white transition-colors"
-                                  >
-                                    <span className="truncate">{sub.label}</span>
-                                    {sub.shortcut && (
-                                      <span className="text-3xs text-[#a1a1aa] font-mono tracking-wider">
-                                        {sub.shortcut}
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
         </div>
 
-        <div className="h-3.5 w-[1px] bg-nle-border mx-1 hidden xl:block" />
-
-        {/* Project Name and Auto-Saved Status */}
-        <div className="hidden xl:flex items-center gap-2">
-          <span className="font-mono text-[11px] text-nle-text font-semibold max-w-[180px] truncate" title={projectName}>
-            {projectName}
-          </span>
-          <span className="flex items-center gap-1 text-[9px] text-nle-emerald font-mono bg-nle-emerald/10 border border-nle-emerald/20 px-1.5 py-0.2 rounded">
-            <span className="w-1.5 h-1.5 rounded-full bg-nle-emerald animate-pulse" />
-            Auto-Saved
-          </span>
+        {/* Windows Standard Window Controls */}
+        <div className="flex items-center">
+          <button
+            className="w-8 h-6 flex items-center justify-center hover:bg-[#2d2d2d] text-[#a0a0a0] hover:text-white transition-colors"
+            title="Minimize"
+          >
+            <span className="text-[10px]">🗕</span>
+          </button>
+          <button
+            className="w-8 h-6 flex items-center justify-center hover:bg-[#2d2d2d] text-[#a0a0a0] hover:text-white transition-colors"
+            title="Maximize"
+          >
+            <span className="text-[10px]">🗖</span>
+          </button>
+          <button
+            onClick={() => setWelcomeOpen(true)}
+            className="w-8 h-6 flex items-center justify-center hover:bg-[#e81123] text-[#a0a0a0] hover:text-white transition-colors"
+            title="Close"
+          >
+            <span className="text-[12px] leading-none">✕</span>
+          </button>
         </div>
       </div>
 
-      {/* Center: Import | Edit | Export Mode Tabs & Sequence Title */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1 bg-nle-canvas px-1.5 py-0.5 rounded border border-nle-border">
+      {/* ============================================================ */}
+      {/* TIER 2: Authentic Native Menu Bar (File, Edit, Clip, etc.)   */}
+      {/* ============================================================ */}
+      <div
+        ref={menuBarRef}
+        className="h-6 bg-[#222222] border-b border-[#2d2d2d] flex items-center px-1 text-[12px] relative"
+      >
+        {Object.keys(menuDefinitions).map((menuName) => {
+          const isMenuOpen = activeMenu === menuName;
+          return (
+            <div key={menuName} className="relative">
+              <button
+                onClick={() => handleMenuClick(menuName)}
+                onMouseEnter={() => activeMenu && handleMenuClick(menuName)}
+                className={`px-2 py-0.5 text-[12px] font-normal transition-colors rounded-sm ${
+                  isMenuOpen
+                    ? 'bg-[#1473e6] text-white'
+                    : 'text-[#e1e1e1] hover:bg-[#2d2d2d] hover:text-white'
+                }`}
+              >
+                {menuName}
+              </button>
+
+              {/* Native Dropdown Window */}
+              {isMenuOpen && (
+                <div
+                  className="absolute left-0 top-full mt-0.5 w-64 py-1 bg-[#252525] border border-[#383838] shadow-2xl z-50 text-[12px] animate-in fade-in duration-75"
+                  onMouseLeave={() => setActiveSubmenu(null)}
+                >
+                  {menuDefinitions[menuName].map((item, idx) => {
+                    if (item.type === 'divider') {
+                      return <div key={`div-${idx}`} className="h-[1px] bg-[#383838] my-1" />;
+                    }
+
+                    const isDisabled = !!item.disabled;
+                    const hasSub = !!item.hasSubmenu;
+                    const isSubOpen = activeSubmenu === item.label;
+
+                    return (
+                      <div
+                        key={`item-${idx}`}
+                        className="relative"
+                        onMouseEnter={() => hasSub && handleSubmenuEnter(item.label!)}
+                      >
+                        <button
+                          disabled={isDisabled}
+                          onClick={() => {
+                            if (!hasSub && item.action) {
+                              item.action();
+                              closeAllMenus();
+                            }
+                          }}
+                          className={`w-full px-3 py-1 flex items-center justify-between text-left transition-colors ${
+                            isDisabled
+                              ? 'text-[#666666] cursor-default'
+                              : isSubOpen
+                              ? 'bg-[#1473e6] text-white'
+                              : 'text-[#e1e1e1] hover:bg-[#1473e6] hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {item.checked !== undefined ? (
+                              <span
+                                className={`text-[11px] font-bold w-3 text-center ${
+                                  item.checked ? 'text-white' : 'text-transparent'
+                                }`}
+                              >
+                                ✓
+                              </span>
+                            ) : null}
+                            <span className="truncate">{item.label}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {item.shortcut && (
+                              <span className="text-3xs text-[#8e8e8e] font-mono tracking-wider">
+                                {item.shortcut}
+                              </span>
+                            )}
+                            {hasSub && (
+                              <span className="text-3xs text-[#8e8e8e] font-mono leading-none">
+                                ›
+                              </span>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Flyout Submenu */}
+                        {hasSub && isSubOpen && item.submenu && (
+                          <div className="absolute left-full top-0 ml-0.5 w-56 py-1 bg-[#252525] border border-[#383838] shadow-2xl z-50 text-[12px] animate-in fade-in duration-75">
+                            {item.submenu.map((sub, sIdx) => {
+                              if (sub.type === 'divider') {
+                                return (
+                                  <div key={`sdiv-${sIdx}`} className="h-[1px] bg-[#383838] my-1" />
+                                );
+                              }
+                              return (
+                                <button
+                                  key={`sitem-${sIdx}`}
+                                  onClick={() => {
+                                    if (sub.action) sub.action();
+                                    closeAllMenus();
+                                  }}
+                                  className="w-full px-3 py-1 flex items-center justify-between text-left text-[#e1e1e1] hover:bg-[#1473e6] hover:text-white transition-colors"
+                                >
+                                  <span className="truncate">{sub.label}</span>
+                                  {sub.shortcut && (
+                                    <span className="text-3xs text-[#8e8e8e] font-mono tracking-wider">
+                                      {sub.shortcut}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ============================================================ */}
+      {/* TIER 3: Premiere Pro Workspace Header Bar (Home, Import/Edit) */}
+      {/* ============================================================ */}
+      <div className="h-10 bg-[#222222] border-b border-[#303030] px-3 flex items-center justify-between">
+        {/* Left: Home Icon, Import, Edit (Selected with Blue Line), Export */}
+        <div className="flex items-center gap-1 h-full">
+          {/* Home Button */}
           <button
             onClick={() => setWelcomeOpen(true)}
-            className="p-1 rounded text-nle-dim hover:text-white hover:bg-nle-panel transition-colors"
+            className="w-8 h-8 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#b0b0b0] hover:text-white transition-colors mr-1"
             title="Home Screen"
           >
-            <span className="material-symbols-outlined text-[15px]">home</span>
+            <span className="material-symbols-outlined text-[18px]">home</span>
           </button>
+
+          {/* Import Tab */}
           <button
             onClick={() => showToastBanner('Import Workspace')}
-            className="px-2 py-0.5 rounded text-[11px] font-medium text-nle-dim hover:text-white hover:bg-nle-panel transition-colors"
+            className="px-3 h-full flex items-center text-[12px] font-medium text-[#999999] hover:text-white hover:bg-[#282828] transition-colors"
           >
             Import
           </button>
+
+          {/* Edit Tab (Active with Blue Underline) */}
           <button
             onClick={() => setActiveWorkspace('editing')}
-            className="px-2.5 py-0.5 rounded text-[11px] font-bold text-nle-accent bg-nle-surface border-b-2 border-nle-accent shadow-sm"
+            className="px-3 h-full flex items-center text-[12px] font-semibold text-white border-b-[2px] border-[#1473e6] bg-[#282828]"
           >
             Edit
           </button>
+
+          {/* Export Tab */}
           <button
             onClick={openRenderProgressModal}
-            className="px-2 py-0.5 rounded text-[11px] font-medium text-nle-dim hover:text-white hover:bg-nle-panel transition-colors"
+            className="px-3 h-full flex items-center text-[12px] font-medium text-[#999999] hover:text-white hover:bg-[#282828] transition-colors"
           >
             Export
           </button>
         </div>
 
-        <div className="hidden lg:flex items-center gap-1.5 font-mono text-[11px] text-nle-dim">
-          <span className="text-white font-semibold">
-            {projectName.replace('.cfs', '')}
-          </span>
-          <span className="text-nle-muted">-</span>
-          <span className="text-nle-accent font-medium">Edited</span>
+        {/* Center: Sequence / Project Title */}
+        <div className="text-[12px] font-medium text-[#888888] tracking-wide select-none">
+          Untitled - Edited
+        </div>
+
+        {/* Right: Workspace Selector, Quick Export, Icons, Adobe Firefly AI, Profile Avatar */}
+        <div className="flex items-center gap-2">
+          {/* Workspace Pill Dropdown */}
+          <div className="relative" ref={workspaceDropdownRef}>
+            <button
+              onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-[#2d2d2d] text-[11px] font-semibold text-[#c0c0c0] hover:text-white tracking-wider"
+              title="Workspace Mode"
+            >
+              <span>LEARNING</span>
+              <span className="text-[10px]">🗖</span>
+            </button>
+
+            {isWorkspaceMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 bg-[#252525] border border-[#383838] shadow-2xl py-1 rounded z-50 text-[11px]">
+                {['LEARNING', 'EDITING', 'COLOR', 'AUDIO', 'GRAPHICS'].map((ws) => (
+                  <button
+                    key={ws}
+                    onClick={() => {
+                      setActiveWorkspace('editing');
+                      setIsWorkspaceMenuOpen(false);
+                      showToastBanner(`Switched to ${ws} workspace`);
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-[#e1e1e1] hover:bg-[#1473e6] hover:text-white transition-colors flex items-center justify-between"
+                  >
+                    <span>{ws}</span>
+                    {ws === 'LEARNING' && <span className="text-white">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Export Button */}
+          <button
+            onClick={openRenderProgressModal}
+            className="w-7 h-7 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#b0b0b0] hover:text-white transition-colors"
+            title="Quick Export (Ctrl+M)"
+          >
+            <span className="material-symbols-outlined text-[16px]">ios_share</span>
+          </button>
+
+          {/* Window / Layout toggle icon */}
+          <button
+            onClick={() => showToastBanner('Window Layout Management')}
+            className="w-7 h-7 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#b0b0b0] hover:text-white transition-colors"
+            title="Layouts"
+          >
+            <span className="text-[12px] font-mono leading-none">☰</span>
+          </button>
+
+          {/* Search icon */}
+          <button
+            onClick={() => showToastBanner('Search Premiere Tools')}
+            className="w-7 h-7 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#b0b0b0] hover:text-white transition-colors"
+            title="Search"
+          >
+            <span className="material-symbols-outlined text-[16px]">search</span>
+          </button>
+
+          {/* Sound / Volume icon */}
+          <button
+            onClick={() => showToastBanner('Audio Output Active')}
+            className="w-7 h-7 rounded hover:bg-[#2d2d2d] flex items-center justify-center text-[#b0b0b0] hover:text-white transition-colors"
+            title="Audio Volume"
+          >
+            <span className="material-symbols-outlined text-[16px]">volume_up</span>
+          </button>
+
+          {/* Authentic Adobe Firefly Generative AI Button */}
+          <button
+            onClick={openVoiceModal}
+            className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#ff3366] via-[#9933ff] to-[#00ccff] p-[1.5px] hover:scale-105 active:scale-95 transition-all shadow-sm"
+            title="Adobe Firefly & AI Copilot Suite"
+          >
+            <div className="w-full h-full rounded-full bg-[#222222] flex items-center justify-center hover:bg-transparent transition-colors">
+              <span className="material-symbols-outlined text-[13px] text-white">auto_awesome</span>
+            </div>
+          </button>
+
+          {/* User Profile Avatar (dhairya gulati) */}
+          <div
+            className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-500 via-indigo-500 to-amber-500 flex items-center justify-center text-white text-[9px] font-bold shadow-sm cursor-pointer ml-0.5"
+            title="Dhairya Gulati"
+          >
+            DG
+          </div>
         </div>
       </div>
-
-      {/* Right: Workspace Switcher, Undo/Redo, AI Copilot, Theme, Profile Avatar */}
-      <div className="flex items-center gap-2">
-        {/* Workspace Pill */}
-        <div className="hidden md:flex items-center bg-nle-canvas px-2 py-0.5 rounded border border-nle-border font-mono text-3xs text-nle-dim gap-1">
-          <span className="text-white font-semibold uppercase">{activeWorkspace}</span>
-          <span className="text-nle-dim text-[10px]">▾</span>
-        </div>
-
-        {/* Undo / Redo */}
-        <div className="flex items-center bg-nle-canvas rounded border border-nle-border p-0.5">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className={`p-1 rounded transition-colors ${
-              canUndo ? 'text-nle-text hover:bg-nle-panel' : 'text-nle-muted cursor-not-allowed'
-            }`}
-            title="Undo (Ctrl+Z)"
-          >
-            <span className="material-symbols-outlined text-[15px]">undo</span>
-          </button>
-          <div className="w-[1px] h-3 bg-nle-border mx-0.5" />
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className={`p-1 rounded transition-colors ${
-              canRedo ? 'text-nle-text hover:bg-nle-panel' : 'text-nle-muted cursor-not-allowed'
-            }`}
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <span className="material-symbols-outlined text-[15px]">redo</span>
-          </button>
-        </div>
-
-        {/* AI Copilot Studio Quick Trigger */}
-        <button
-          onClick={openVoiceModal}
-          className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-nle-accent/10 border border-nle-accent/40 text-nle-accent hover:bg-nle-accent/20 transition-all shadow-[0_0_10px_rgba(0,229,255,0.15)]"
-          title="Open AI Copilot & Voice Telemetry"
-        >
-          <span className="material-symbols-outlined text-[15px] animate-pulse">auto_awesome</span>
-          <span className="hidden sm:inline font-semibold text-[11px]">AI Copilot</span>
-        </button>
-
-        {/* Batch Queue Button */}
-        <button
-          onClick={() => setBatchQueueOpen(true)}
-          className="p-1 rounded bg-nle-canvas hover:bg-nle-panel border border-nle-border text-nle-dim hover:text-nle-text transition-colors"
-          title="Batch Render Queue (Ctrl+B)"
-        >
-          <span className="material-symbols-outlined text-[15px]">queue_play_next</span>
-        </button>
-
-        {/* Theme Toggle (Dark / Light) */}
-        <button
-          onClick={toggleTheme}
-          className="p-1 rounded bg-nle-canvas hover:bg-nle-panel border border-nle-border text-nle-dim hover:text-nle-text transition-colors"
-          title={themeMode === 'dark' ? 'Switch to Editorial Light Mode' : 'Switch to Studio Dark Mode'}
-        >
-          <span className="material-symbols-outlined text-[15px]">
-            {themeMode === 'dark' ? 'light_mode' : 'dark_mode'}
-          </span>
-        </button>
-
-        {/* Export Button */}
-        <button
-          onClick={openRenderProgressModal}
-          className="flex items-center gap-1.5 px-3 py-0.5 rounded bg-nle-blue hover:bg-nle-blue/90 text-white font-semibold text-[11px] shadow-[0_0_12px_rgba(13,153,255,0.3)] active:scale-95 transition-all"
-          title="Export Sequence Master (Ctrl+M)"
-        >
-          <span className="material-symbols-outlined text-[15px]">ios_share</span>
-          <span>Export</span>
-        </button>
-
-        {/* Profile Avatar (dhairya gulati) */}
-        <div
-          className="w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-500 via-purple-500 to-amber-500 flex items-center justify-center text-white text-[10px] font-bold shadow-md cursor-pointer ml-1"
-          title="Dhairya Gulati (Active Editor)"
-        >
-          DG
-        </div>
-      </div>
-    </header>
+    </div>
   );
 };

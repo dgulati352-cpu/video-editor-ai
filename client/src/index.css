@@ -3,35 +3,56 @@
 @tailwind utilities;
 
 :root {
-  /* Studio NLE Dark (Default) */
-  --nle-bg: #0e0e0e;
-  --nle-canvas: #09090b;
-  --nle-surface: #131313;
-  --nle-panel: #18181b;
-  --nle-header: #1f1f23;
-  --nle-border: #27272a;
-  --nle-muted: #3f3f46;
-  --nle-text: #f4f4f5;
-  --nle-dim: #a1a1aa;
+  /* Authentic Premiere Pro 2024 / Studio NLE Dark Tokens */
+  --nle-bg: #181818;
+  --nle-canvas: #121212;
+  --nle-surface: #222222;
+  --nle-panel: #262626;
+  --nle-header: #1e1e1e;
+  --nle-tab-active: #2b2b2b;
+  --nle-tab-inactive: #1c1c1c;
+  --nle-border: #323232;
+  --nle-border-subtle: #282828;
+  --nle-muted: #555555;
+  --nle-text: #e1e1e1;
+  --nle-dim: #8e8e8e;
+  --nle-accent: #1473e6; /* Adobe Pro Blue */
+  --nle-blue: #1473e6;
 }
 
 html.light {
   /* Studio NLE Light */
-  --nle-bg: #f4f4f5;
-  --nle-canvas: #e4e4e7;
-  --nle-surface: #fdf8f8;
-  --nle-panel: #ffffff;
-  --nle-header: #f4f4f5;
-  --nle-border: #ddd9d8;
-  --nle-muted: #d4d4d8;
-  --nle-text: #18181b;
-  --nle-dim: #71717a;
+  --nle-bg: #e6e6e6;
+  --nle-canvas: #dcdcdc;
+  --nle-surface: #f0f0f0;
+  --nle-panel: #f8f8f8;
+  --nle-header: #e0e0e0;
+  --nle-tab-active: #ffffff;
+  --nle-tab-inactive: #e4e4e4;
+  --nle-border: #cccccc;
+  --nle-border-subtle: #d6d6d6;
+  --nle-muted: #999999;
+  --nle-text: #1a1a1a;
+  --nle-dim: #666666;
+  --nle-accent: #1473e6;
+  --nle-blue: #1473e6;
 }
 
-/* Custom Ergonomic Scrollbars */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--nle-bg);
+  color: var(--nle-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+
+/* Custom Ergonomic NLE Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -40,7 +61,7 @@ html.light {
 
 ::-webkit-scrollbar-thumb {
   background: var(--nle-muted);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
