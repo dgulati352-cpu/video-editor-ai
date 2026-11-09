@@ -33,6 +33,10 @@ export const Timeline: React.FC = () => {
     frameRate,
     showToastBanner,
     openVoiceModal,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useTimelineStore();
 
   const timelineContainerRef = useRef<HTMLDivElement | null>(null);
@@ -219,6 +223,34 @@ export const Timeline: React.FC = () => {
           <span className="font-mono text-[11px] font-semibold text-[#1473e6] tracking-wider">
             {secondsToSMPTE(currentTime, frameRate)}
           </span>
+
+          {/* Quick Undo & Redo Buttons */}
+          <div className="flex items-center gap-0.5 border-l border-[#353535] pl-2 ml-0.5">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className={`p-1 rounded transition-colors ${
+                canUndo
+                  ? 'text-[#b0b0b0] hover:text-white hover:bg-[#333333]'
+                  : 'text-[#444444] cursor-not-allowed'
+              }`}
+              title="Undo (Ctrl+Z)"
+            >
+              <span className="material-symbols-outlined text-[15px]">undo</span>
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className={`p-1 rounded transition-colors ${
+                canRedo
+                  ? 'text-[#b0b0b0] hover:text-white hover:bg-[#333333]'
+                  : 'text-[#444444] cursor-not-allowed'
+              }`}
+              title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+            >
+              <span className="material-symbols-outlined text-[15px]">redo</span>
+            </button>
+          </div>
 
           {/* Horseshoe Magnet Snap Tool Icon */}
           <button

@@ -1872,17 +1872,23 @@ export const useTimelineStore = create<TimelineState>()(
       currentTime,
     };
 
+    const seqEnd =
+      prev.clips.length > 0
+        ? Math.max(...prev.clips.map((c) => c.startTime + c.duration))
+        : 0;
+
     set({
       clips: prev.clips,
       tracks: prev.tracks,
       currentTime: prev.currentTime,
+      duration: seqEnd,
       undoStack: restUndo,
       redoStack: [currentSnapshot, ...redoStack],
       canUndo: restUndo.length > 0,
       canRedo: true,
     });
 
-    get().showToastBanner('Undo performed (Snapshot Journal restored)');
+    get().showToastBanner('Undo (Ctrl+Z)');
   },
 
   redo: () => {
@@ -1896,17 +1902,23 @@ export const useTimelineStore = create<TimelineState>()(
       currentTime,
     };
 
+    const seqEnd =
+      next.clips.length > 0
+        ? Math.max(...next.clips.map((c) => c.startTime + c.duration))
+        : 0;
+
     set({
       clips: next.clips,
       tracks: next.tracks,
       currentTime: next.currentTime,
+      duration: seqEnd,
       undoStack: [currentSnapshot, ...undoStack],
       redoStack: restRedo,
       canUndo: true,
       canRedo: restRedo.length > 0,
     });
 
-    get().showToastBanner('Redo performed');
+    get().showToastBanner('Redo (Ctrl+Y)');
   },
     }),
     {

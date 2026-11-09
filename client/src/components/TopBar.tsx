@@ -693,9 +693,38 @@ export const TopBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Center: Sequence / Project Title */}
-        <div className="text-[12px] font-medium text-[#888888] tracking-wide select-none">
-          {projectName.replace('.prproj', '').replace('.cfs', '')} - Edited
+        {/* Center: Sequence Title + Quick Undo & Redo Buttons */}
+        <div className="flex items-center gap-3">
+          <div className="text-[12px] font-medium text-[#888888] tracking-wide select-none">
+            {projectName.replace('.prproj', '').replace('.cfs', '')} - Edited
+          </div>
+
+          <div className="flex items-center gap-0.5 bg-[#1a1a1a] p-0.5 rounded border border-[#333333]">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                canUndo
+                  ? 'text-white hover:bg-[#303030] hover:text-[#00e5ff]'
+                  : 'text-[#555555] cursor-not-allowed'
+              }`}
+              title="Undo (Ctrl+Z)"
+            >
+              <span className="material-symbols-outlined text-[15px]">undo</span>
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                canRedo
+                  ? 'text-white hover:bg-[#303030] hover:text-[#00e5ff]'
+                  : 'text-[#555555] cursor-not-allowed'
+              }`}
+              title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+            >
+              <span className="material-symbols-outlined text-[15px]">redo</span>
+            </button>
+          </div>
         </div>
 
         {/* Right: Workspace Selector, Quick Export, Icons, Adobe Firefly AI, Profile Avatar */}
