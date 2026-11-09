@@ -43,17 +43,22 @@ export const Timeline: React.FC = () => {
   const timeToPixels = (time: number) => time * timelineZoom;
   const pixelsToTime = (px: number) => Math.max(0, px / timelineZoom);
 
+  // Exact end of the video or photo footage
+  const sequenceEnd =
+    clips.length > 0 ? Math.max(...clips.map((c) => c.startTime + c.duration)) : duration;
+
   const updatePlayheadFromMouseEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent) => {
     if (!timelineContainerRef.current) return;
     const rect = timelineContainerRef.current.getBoundingClientRect();
     const scrollLeft = timelineContainerRef.current.scrollLeft;
     const mouseX = e.clientX - rect.left + scrollLeft - 140;
-    const maxDur = Math.max(30, duration);
+    const maxDur = sequenceEnd > 0 ? sequenceEnd : Math.max(30, duration);
     let newTime = Math.max(0, Math.min(maxDur, pixelsToTime(mouseX)));
 
     if (snappingEnabled) {
       const snapPoints = [
         0,
+        sequenceEnd,
         inPoint ?? -999,
         outPoint ?? -999,
         ...clips.map((c) => c.startTime),
@@ -271,7 +276,9 @@ export const Timeline: React.FC = () => {
             {/* Time Ruler and Tracks Canvas */}
             <div
               className="relative flex flex-col flex-1"
-              style={{ width: `${Math.max(1200, timeToPixels(duration))}px` }}
+              style={{
+                width: `${Math.max(800, timeToPixels(sequenceEnd > 0 ? sequenceEnd : Math.max(30, duration)) + 200)}px`,
+              }}
             >
               {/* Ruler Bar */}
               <div
@@ -281,7 +288,12 @@ export const Timeline: React.FC = () => {
                 }}
                 className="h-6 bg-[#222222] border-b border-[#2d2d2d] relative cursor-pointer"
               >
-                {Array.from({ length: Math.ceil(duration / 2) }).map((_, i) => (
+                {Array.from({
+                  length: Math.max(
+                    2,
+                    Math.ceil((sequenceEnd > 0 ? sequenceEnd : Math.max(30, duration)) / 2) + 1
+                  ),
+                }).map((_, i) => (
                   <div
                     key={i}
                     className="absolute top-0 bottom-0 border-l border-[#353535] text-[9px] font-mono text-[#777777] pl-1 pt-0.5"
@@ -336,6 +348,26 @@ export const Timeline: React.FC = () => {
                   </div>
                 );
               })}
+
+              {/* Sequence End Stop Boundary & Inactive Void */}
+              {sequenceEnd > 0 && (
+                <div
+                  className="absolute top-0 bottom-0 pointer-events-none z-20 border-l border-[#e81123]/90"
+                  style={{
+                    left: `${timeToPixels(sequenceEnd)}px`,
+                    right: 0,
+                    height: `${tracks.length * 48 + 24}px`,
+                    background:
+                      'repeating-linear-gradient(45deg, rgba(0,0,0,0.5), rgba(0,0,0,0.5) 10px, rgba(20,20,20,0.7) 10px, rgba(20,20,20,0.7) 20px)',
+                  }}
+                >
+                  <div className="absolute top-0 left-0 bg-[#e81123] text-white text-[8px] font-mono px-1 py-0.5 tracking-wider uppercase font-bold flex items-center gap-1 shadow">
+                    <span>STOP</span>
+                    <span>•</span>
+                    <span>{secondsToSMPTE(sequenceEnd, frameRate)}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Playhead Line */}
               <div

@@ -21,13 +21,26 @@ export const ProgramMonitor: React.FC = () => {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Active visual clip at current playhead
-  const activeClip = clips.find(
-    (c) =>
-      (c.type === 'video' || /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(c.title)) &&
-      currentTime >= c.startTime &&
-      currentTime <= c.startTime + c.duration
-  );
+  const sequenceEnd =
+    clips.length > 0 ? Math.max(...clips.map((c) => c.startTime + c.duration)) : duration;
+
+  // Active visual clip at current playhead (if playhead stopped at exact end, freeze on final frame)
+  const activeClip =
+    clips.find(
+      (c) =>
+        (c.type === 'video' || /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(c.title)) &&
+        currentTime >= c.startTime &&
+        currentTime <= c.startTime + c.duration
+    ) ||
+    (sequenceEnd > 0 && currentTime >= sequenceEnd - 0.05
+      ? [...clips]
+          .reverse()
+          .find(
+            (c) =>
+              c.type === 'video' ||
+              /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(c.title)
+          )
+      : undefined);
 
   // Lookup actual mediaUrl (from clip or from mediaAssets)
   const mediaAsset = mediaAssets.find(
@@ -41,7 +54,10 @@ export const ProgramMonitor: React.FC = () => {
   useEffect(() => {
     const vid = videoRef.current;
     if (vid && activeClip && isVideo) {
-      const localTime = Math.max(0, (currentTime - activeClip.startTime) * (activeClip.speed || 1));
+      const localTime = Math.max(
+        0,
+        Math.min(activeClip.duration, (currentTime - activeClip.startTime) * (activeClip.speed || 1))
+      );
       if (Math.abs(vid.currentTime - localTime) > 0.25) {
         vid.currentTime = localTime;
       }
@@ -176,9 +192,9 @@ export const ProgramMonitor: React.FC = () => {
           </button>
         </div>
 
-        {/* Right Timecode */}
+        {/* Right Timecode (End of sequence) */}
         <span className="font-mono text-[11px] text-[#888888]">
-          {secondsToSMPTE(duration, frameRate)}
+          {secondsToSMPTE(sequenceEnd, frameRate)}
         </span>
       </div>
     </div>

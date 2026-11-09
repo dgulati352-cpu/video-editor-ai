@@ -725,7 +725,7 @@ export const useTimelineStore = create<TimelineState>()(
   // Navigation & Tools
   activeTool: 'selection',
   currentTime: 0,
-  duration: 30,
+  duration: 0,
   isPlaying: false,
   playbackRate: 1,
   inPoint: null,
@@ -867,7 +867,10 @@ export const useTimelineStore = create<TimelineState>()(
   setActiveTool: (tool: EditingTool) => set({ activeTool: tool }),
 
   setCurrentTime: (time: number) => {
-    const maxDur = Math.max(30, get().duration);
+    const clips = get().clips;
+    const sequenceEnd =
+      clips.length > 0 ? Math.max(...clips.map((c) => c.startTime + c.duration)) : get().duration;
+    const maxDur = sequenceEnd > 0 ? sequenceEnd : Math.max(30, get().duration);
     const clamped = Math.max(0, Math.min(maxDur, time));
     // Simulate dynamic audio peak fluctuations based on playback
     const isOverAudio = get().clips.some(
@@ -885,7 +888,18 @@ export const useTimelineStore = create<TimelineState>()(
   },
 
   togglePlayPause: () => {
-    set((state) => ({ isPlaying: !state.isPlaying, playbackRate: 1 }));
+    const { currentTime, clips, isPlaying, duration } = get();
+    const sequenceEnd =
+      clips.length > 0 ? Math.max(...clips.map((c) => c.startTime + c.duration)) : duration;
+
+    if (!isPlaying) {
+      if (sequenceEnd <= 0) return;
+      // If playhead is at the exact end of footage, restart from 0
+      const newTime = currentTime >= sequenceEnd - 0.02 ? 0 : currentTime;
+      set({ isPlaying: true, playbackRate: 1, currentTime: newTime });
+    } else {
+      set({ isPlaying: false });
+    }
   },
 
   setPlaybackRate: (rate: number) => {
@@ -955,17 +969,20 @@ export const useTimelineStore = create<TimelineState>()(
 
   moveClip: (clipId: string, newStartTime: number, newTrackId?: string) => {
     get().pushHistorySnapshot();
-    set((state) => ({
-      clips: state.clips.map((c) =>
-        c.id === clipId
-          ? {
-              ...c,
-              startTime: Math.max(0, newStartTime),
-              trackId: newTrackId ?? c.trackId,
-            }
-          : c
-      ),
-    }));
+    const updatedClips = get().clips.map((c) =>
+      c.id === clipId
+        ? {
+            ...c,
+            startTime: Math.max(0, newStartTime),
+            trackId: newTrackId ?? c.trackId,
+          }
+        : c
+    );
+    const seqEnd =
+      updatedClips.length > 0
+        ? Math.max(...updatedClips.map((c) => c.startTime + c.duration))
+        : 0;
+    set({ clips: updatedClips, duration: seqEnd });
   },
 
   splitClipAtPlayhead: () => {
@@ -1014,9 +1031,17 @@ export const useTimelineStore = create<TimelineState>()(
     if (!selectedClipId) return;
 
     get().pushHistorySnapshot();
+    const remainingClips = clips.filter((c) => c.id !== selectedClipId);
+    const seqEnd =
+      remainingClips.length > 0
+        ? Math.max(...remainingClips.map((c) => c.startTime + c.duration))
+        : 0;
     set({
-      clips: clips.filter((c) => c.id !== selectedClipId),
+      clips: remainingClips,
       selectedClipId: null,
+      duration: seqEnd,
+      currentTime: Math.min(get().currentTime, seqEnd),
+      isPlaying: remainingClips.length === 0 ? false : get().isPlaying,
     });
     get().showToastBanner('Deleted selected clip');
   },
@@ -1421,13 +1446,13 @@ export const useTimelineStore = create<TimelineState>()(
     });
 
     const updatedClips = [...sanitizedClips, newClip];
-    const newDuration = Math.max(30, Math.max(...updatedClips.map((c) => c.startTime + c.duration)) + 5);
+    const sequenceEnd = Math.max(...updatedClips.map((c) => c.startTime + c.duration));
 
     set({
       clips: updatedClips,
       selectedClipId: newClip.id,
       sourceAssetId: asset.id,
-      duration: newDuration,
+      duration: sequenceEnd,
     });
     get().showToastBanner(`Inserted "${asset.name}" onto ${targetTrackId.toUpperCase()} at ${currentTime.toFixed(1)}s`);
   },

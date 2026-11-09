@@ -59,10 +59,10 @@ export const App: React.FC = () => {
           color: isVisual ? '#00e5ff' : c.color,
         };
       });
-      const maxDur = Math.max(30, Math.max(...fixedClips.map((c) => c.startTime + c.duration)) + 5);
-      useTimelineStore.setState({ clips: fixedClips, duration: maxDur });
+      const sequenceEnd = Math.max(...fixedClips.map((c) => c.startTime + c.duration));
+      useTimelineStore.setState({ clips: fixedClips, duration: sequenceEnd });
     } else {
-      useTimelineStore.setState({ duration: 30 });
+      useTimelineStore.setState({ duration: 0 });
     }
   }, []);
 
@@ -220,6 +220,7 @@ export const App: React.FC = () => {
   ]);
 
   // 60 FPS Real-time Playback Loop (Continuous frame pump reading direct Zustand state)
+  // Stops cleanly at the exact end of photo or video footage
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -229,16 +230,29 @@ export const App: React.FC = () => {
       lastTime = now;
 
       const state = useTimelineStore.getState();
-      const maxDur = Math.max(30, state.duration);
+      const sequenceEnd =
+        state.clips.length > 0
+          ? Math.max(...state.clips.map((c) => c.startTime + c.duration))
+          : state.duration;
 
       if (state.isPlaying && state.playbackRate !== 0) {
-        let nextTime = state.currentTime + deltaSec * state.playbackRate;
-        if (nextTime >= maxDur) {
-          nextTime = 0; // loop back to 0
-        } else if (nextTime < 0) {
-          nextTime = maxDur;
+        if (sequenceEnd <= 0) {
+          // No media on timeline, stop immediately
+          useTimelineStore.setState({ isPlaying: false });
+        } else {
+          const nextTime = state.currentTime + deltaSec * state.playbackRate;
+
+          // When playhead reaches or exceeds the end of footage, stop immediately!
+          if (nextTime >= sequenceEnd) {
+            state.setCurrentTime(sequenceEnd);
+            useTimelineStore.setState({ isPlaying: false, playbackRate: 1 });
+          } else if (nextTime < 0) {
+            state.setCurrentTime(0);
+            useTimelineStore.setState({ isPlaying: false, playbackRate: 1 });
+          } else {
+            state.setCurrentTime(nextTime);
+          }
         }
-        state.setCurrentTime(nextTime);
       }
 
       animId = requestAnimationFrame(renderLoop);
