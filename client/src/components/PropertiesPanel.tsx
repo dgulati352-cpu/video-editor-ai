@@ -22,11 +22,16 @@ export const PropertiesPanel: React.FC = () => {
     quickAutoSubtitles,
     openRenderProgressModal,
     showToastBanner,
+    addEffectToClip,
+    toggleClipEffect,
+    updateClipEffectValue,
+    removeClipEffect,
   } = useTimelineStore();
 
   const [activeTab, setActiveTab] = useState<'properties' | 'inspector'>('properties');
   const [motionOpen, setMotionOpen] = useState(true);
   const [colorOpen, setColorOpen] = useState(true);
+  const [effectsOpen, setEffectsOpen] = useState(true);
   const [volumeOpen, setVolumeOpen] = useState(true);
 
   // Current selected clip (or null)
@@ -331,7 +336,107 @@ export const PropertiesPanel: React.FC = () => {
               )}
             </div>
 
-            {/* 3. Audio Volume (If not pure image) */}
+            {/* 3. Applied Video & Stylize Effects */}
+            <div className="flex flex-col bg-[#252525] rounded-[3px] border border-[#333333] overflow-hidden">
+              <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#2a2a2a] border-b border-[#333333]">
+                <button
+                  onClick={() => setEffectsOpen(!effectsOpen)}
+                  className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#d0d0d0]"
+                >
+                  <span className="text-[9px] text-[#888888]">{effectsOpen ? '▼' : '▶'}</span>
+                  <span>Video Effects ({selectedClip.effects?.length || 0})</span>
+                </button>
+
+                {/* + Add Effect Dropdown */}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      addEffectToClip(selectedClip.id, e.target.value as any);
+                    }
+                  }}
+                  className="bg-[#1a1a1a] border border-[#3d3d3d] text-[#00e5ff] rounded px-1.5 py-0.5 text-[10px] font-medium cursor-pointer focus:outline-none"
+                >
+                  <option value="">+ Add Effect...</option>
+                  <option value="gaussian_blur">Gaussian Blur</option>
+                  <option value="black_and_white">Black & White (Monochrome)</option>
+                  <option value="sepia_vintage">Sepia Vintage 35mm</option>
+                  <option value="cinematic_glow">Cinematic Radiant Glow</option>
+                  <option value="vignette">Cinematic Vignette</option>
+                  <option value="invert">Invert Colors</option>
+                  <option value="warm_sunset">Warm Sunset Gold</option>
+                  <option value="cool_cyan">Cool Matrix Cyan</option>
+                  <option value="high_contrast_noir">High Contrast Film Noir</option>
+                </select>
+              </div>
+
+              {effectsOpen && (
+                <div className="p-2.5 flex flex-col gap-2.5">
+                  {!selectedClip.effects || selectedClip.effects.length === 0 ? (
+                    <div className="py-2 text-center text-[#777777] text-[10px] italic">
+                      No effects applied. Select an effect from "+ Add Effect..." above.
+                    </div>
+                  ) : (
+                    selectedClip.effects.map((fx) => (
+                      <div
+                        key={fx.id}
+                        className={`flex flex-col p-2 rounded border transition-colors ${
+                          fx.enabled
+                            ? 'bg-[#1e1e1e] border-[#383838]'
+                            : 'bg-[#181818] border-[#2a2a2a] opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => toggleClipEffect(selectedClip.id, fx.id)}
+                              className={`w-3.5 h-3.5 rounded-sm flex items-center justify-center text-[10px] transition-colors ${
+                                fx.enabled
+                                  ? 'bg-[#1473e6] text-white'
+                                  : 'bg-[#333333] text-[#777777]'
+                              }`}
+                              title={fx.enabled ? 'Disable Effect' : 'Enable Effect'}
+                            >
+                              ✓
+                            </button>
+                            <span className="font-semibold text-white text-[11px]">
+                              {fx.name}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-[#a0a0a0]">
+                              {fx.value}%
+                            </span>
+                            <button
+                              onClick={() => removeClipEffect(selectedClip.id, fx.id)}
+                              className="text-[#888888] hover:text-[#e81123] text-[11px] px-1"
+                              title="Delete Effect"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Intensity Slider */}
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={fx.value}
+                          onChange={(e) =>
+                            updateClipEffectValue(selectedClip.id, fx.id, Number(e.target.value))
+                          }
+                          className="w-full h-1 bg-[#333333] appearance-none accent-[#1473e6] cursor-pointer"
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Audio Volume (If not pure image) */}
             <div className="flex flex-col bg-[#252525] rounded-[3px] border border-[#333333] overflow-hidden">
               <button
                 onClick={() => setVolumeOpen(!volumeOpen)}

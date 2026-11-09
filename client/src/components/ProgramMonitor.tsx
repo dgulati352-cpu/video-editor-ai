@@ -84,10 +84,37 @@ export const ProgramMonitor: React.FC = () => {
   const contrast = clipColor?.contrast ?? 0;
   const saturation = clipColor?.saturation ?? 100;
 
+  // Compute active clip effects
+  let filterStr = `brightness(${1 + exposure * 0.15}) contrast(${1 + contrast * 0.02}) saturate(${saturation / 100})`;
+  let vignetteValue = 0;
+
+  activeClip?.effects?.forEach((fx) => {
+    if (!fx.enabled) return;
+    if (fx.type === 'gaussian_blur') {
+      filterStr += ` blur(${(fx.value / 100) * 16}px)`;
+    } else if (fx.type === 'black_and_white') {
+      filterStr += ` grayscale(${fx.value}%)`;
+    } else if (fx.type === 'sepia_vintage') {
+      filterStr += ` sepia(${fx.value}%) hue-rotate(-20deg)`;
+    } else if (fx.type === 'invert') {
+      filterStr += ` invert(${fx.value}%)`;
+    } else if (fx.type === 'cinematic_glow') {
+      filterStr += ` drop-shadow(0 0 ${(fx.value / 100) * 20}px rgba(0, 229, 255, 0.75))`;
+    } else if (fx.type === 'warm_sunset') {
+      filterStr += ` sepia(${(fx.value / 100) * 45}%) saturate(${100 + fx.value * 0.8}%)`;
+    } else if (fx.type === 'cool_cyan') {
+      filterStr += ` hue-rotate(${(fx.value / 100) * 75}deg) saturate(${100 + fx.value * 0.4}%)`;
+    } else if (fx.type === 'high_contrast_noir') {
+      filterStr += ` contrast(${100 + fx.value * 1.5}%) grayscale(${fx.value * 0.85}%)`;
+    } else if (fx.type === 'vignette') {
+      vignetteValue = Math.max(vignetteValue, fx.value);
+    }
+  });
+
   const visualStyle: React.CSSProperties = {
     transform: `translate(${posX}px, ${posY}px) scale(${scale / 100}) rotate(${rotation}deg)`,
     opacity,
-    filter: `brightness(${1 + exposure * 0.15}) contrast(${1 + contrast * 0.02}) saturate(${saturation / 100})`,
+    filter: filterStr,
     transition: 'transform 0.05s ease-out',
   };
 
@@ -141,6 +168,16 @@ export const ProgramMonitor: React.FC = () => {
           <div className="absolute inset-4 border border-white/30 pointer-events-none flex items-center justify-center">
             <div className="w-[90%] h-[90%] border border-white/20" />
           </div>
+        )}
+
+        {/* Cinematic Vignette Overlay */}
+        {vignetteValue > 0 && (
+          <div
+            className="absolute inset-0 pointer-events-none z-10"
+            style={{
+              background: `radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,${(vignetteValue / 100) * 0.85}) 100%)`,
+            }}
+          />
         )}
       </div>
 

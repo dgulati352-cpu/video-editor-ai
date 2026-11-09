@@ -8,6 +8,7 @@ import {
   Clip,
   ClipTransform,
   ClipColorAdjust,
+  ClipEffect,
   SilenceCut,
   SilenceRemovalState,
   TranscriptItem,
@@ -134,6 +135,10 @@ interface TimelineState {
   deleteSelectedClip: () => void;
   insertAssetAtTrackAndTime: (assetId: string, trackId: string, time: number) => void;
   addTitleClip: (titleText?: string) => void;
+  addEffectToClip: (clipId: string, effectType: ClipEffect['type']) => void;
+  toggleClipEffect: (clipId: string, effectId: string) => void;
+  updateClipEffectValue: (clipId: string, effectId: string, value: number) => void;
+  removeClipEffect: (clipId: string, effectId: string) => void;
 
   // Silence Removal Actions
   setSilenceThreshold: (db: number) => void;
@@ -1221,6 +1226,91 @@ export const useTimelineStore = create<TimelineState>()(
       duration: sequenceEnd,
     });
     get().showToastBanner(`Added Title "${titleText}" on V2`);
+  },
+
+  addEffectToClip: (clipId: string, effectType: ClipEffect['type']) => {
+    get().pushHistorySnapshot();
+    const EFFECT_INFO: Record<
+      ClipEffect['type'],
+      { name: string; category: ClipEffect['category']; defaultValue: number }
+    > = {
+      gaussian_blur: { name: 'Gaussian Blur', category: 'video', defaultValue: 35 },
+      black_and_white: { name: 'Black & White (Monochrome)', category: 'color', defaultValue: 100 },
+      sepia_vintage: { name: 'Sepia Vintage 35mm', category: 'color', defaultValue: 80 },
+      invert: { name: 'Invert Colors', category: 'stylize', defaultValue: 100 },
+      cinematic_glow: { name: 'Cinematic Radiant Glow', category: 'stylize', defaultValue: 50 },
+      vignette: { name: 'Cinematic Vignette', category: 'stylize', defaultValue: 60 },
+      warm_sunset: { name: 'Warm Sunset Gold', category: 'color', defaultValue: 70 },
+      cool_cyan: { name: 'Cool Matrix Cyan', category: 'color', defaultValue: 75 },
+      high_contrast_noir: { name: 'High Contrast Film Noir', category: 'color', defaultValue: 65 },
+    };
+
+    const info = EFFECT_INFO[effectType];
+    const newEffect: ClipEffect = {
+      id: `fx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: info.name,
+      type: effectType,
+      category: info.category,
+      enabled: true,
+      value: info.defaultValue,
+    };
+
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? {
+              ...c,
+              effects: [...(c.effects || []), newEffect],
+            }
+          : c
+      ),
+    }));
+    get().showToastBanner(`Applied effect "${info.name}"`);
+  },
+
+  toggleClipEffect: (clipId: string, effectId: string) => {
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? {
+              ...c,
+              effects: (c.effects || []).map((fx) =>
+                fx.id === effectId ? { ...fx, enabled: !fx.enabled } : fx
+              ),
+            }
+          : c
+      ),
+    }));
+  },
+
+  updateClipEffectValue: (clipId: string, effectId: string, value: number) => {
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? {
+              ...c,
+              effects: (c.effects || []).map((fx) =>
+                fx.id === effectId ? { ...fx, value: Math.max(0, Math.min(100, value)) } : fx
+              ),
+            }
+          : c
+      ),
+    }));
+  },
+
+  removeClipEffect: (clipId: string, effectId: string) => {
+    get().pushHistorySnapshot();
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? {
+              ...c,
+              effects: (c.effects || []).filter((fx) => fx.id !== effectId),
+            }
+          : c
+      ),
+    }));
+    get().showToastBanner('Removed effect');
   },
 
   // Silence Removal Actions

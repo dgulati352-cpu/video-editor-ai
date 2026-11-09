@@ -14,9 +14,17 @@ export const MediaBin: React.FC = () => {
     clearMediaAssets,
     setSourceAssetId,
     openVoiceModal,
+    addEffectToClip,
+    selectedClipId,
+    clips,
   } = useTimelineStore();
 
-  const [activeTab, setActiveTab] = useState<'project' | 'browser'>('project');
+  const [activeTab, setActiveTab] = useState<'project' | 'browser' | 'effects'>('project');
+  const [effectsFolderOpen, setEffectsFolderOpen] = useState({
+    video: true,
+    transitions: true,
+    audio: true,
+  });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
   const [hoverScrubMap, setHoverScrubMap] = useState<Record<string, number>>({});
@@ -202,6 +210,18 @@ export const MediaBin: React.FC = () => {
           >
             Media Browser
           </button>
+
+          {/* Effects Tab (Shift+7) */}
+          <button
+            onClick={() => setActiveTab('effects')}
+            className={`text-[11px] font-medium transition-colors ${
+              activeTab === 'effects'
+                ? 'text-white border-b-2 border-[#1473e6] pb-1'
+                : 'text-[#999999] hover:text-white'
+            }`}
+          >
+            Effects
+          </button>
         </div>
 
         {/* Clear All / Trash icon if assets exist */}
@@ -260,6 +280,177 @@ export const MediaBin: React.FC = () => {
       </div>
 
       {/* Content Area */}
+      {activeTab === 'effects' ? (
+        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 text-xs">
+          {/* Target clip indicator */}
+          <div className="text-[10px] text-[#888888] px-1 flex items-center justify-between">
+            {clips.length > 0 ? (
+              <span>
+                Target Clip:{' '}
+                <strong className="text-[#00e5ff]">
+                  {(clips.find((c) => c.id === selectedClipId) || clips.find((c) => c.type === 'video') || clips[0]).title}
+                </strong>
+              </span>
+            ) : (
+              <span>Add media to sequence to apply effects</span>
+            )}
+            <span className="text-[9px] text-[#666666]">Click Apply to add</span>
+          </div>
+
+          {/* Folder 1: Video Effects */}
+          <div className="flex flex-col bg-[#222222] rounded border border-[#303030] overflow-hidden">
+            <button
+              onClick={() =>
+                setEffectsFolderOpen((prev) => ({ ...prev, video: !prev.video }))
+              }
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#282828] text-[11px] font-semibold text-white hover:bg-[#303030] transition-colors"
+            >
+              <span className="text-[9px] text-[#888888]">
+                {effectsFolderOpen.video ? '▼' : '▶'}
+              </span>
+              <span className="material-symbols-outlined text-[14px] text-[#00e5ff]">
+                auto_fix_high
+              </span>
+              <span>Video Effects (9)</span>
+            </button>
+            {effectsFolderOpen.video && (
+              <div className="flex flex-col p-1 gap-0.5">
+                {[
+                  {
+                    type: 'gaussian_blur',
+                    name: 'Gaussian Blur',
+                    icon: 'blur_on',
+                    desc: 'Softens & defocuses image',
+                  },
+                  {
+                    type: 'black_and_white',
+                    name: 'Black & White',
+                    icon: 'monochrome_photos',
+                    desc: 'Classic monochrome B&W film',
+                  },
+                  {
+                    type: 'sepia_vintage',
+                    name: 'Sepia Vintage 35mm',
+                    icon: 'filter_vintage',
+                    desc: 'Warm aged analog film',
+                  },
+                  {
+                    type: 'cinematic_glow',
+                    name: 'Cinematic Radiant Glow',
+                    icon: 'flare',
+                    desc: 'Luminous glowing highlights',
+                  },
+                  {
+                    type: 'vignette',
+                    name: 'Cinematic Vignette',
+                    icon: 'vignette',
+                    desc: 'Dark circular edge fade',
+                  },
+                  {
+                    type: 'invert',
+                    name: 'Invert Colors',
+                    icon: 'invert_colors',
+                    desc: 'Psychedelic negative film',
+                  },
+                  {
+                    type: 'warm_sunset',
+                    name: 'Warm Sunset Gold',
+                    icon: 'wb_sunny',
+                    desc: 'Golden hour grading look',
+                  },
+                  {
+                    type: 'cool_cyan',
+                    name: 'Cool Matrix Cyan',
+                    icon: 'ac_unit',
+                    desc: 'Futuristic sci-fi teal grade',
+                  },
+                  {
+                    type: 'high_contrast_noir',
+                    name: 'Film Noir High Contrast',
+                    icon: 'contrast',
+                    desc: 'Gritty dramatic shadow punch',
+                  },
+                ].map((fx) => (
+                  <div
+                    key={fx.type}
+                    onClick={() => {
+                      const target =
+                        clips.find((c) => c.id === selectedClipId) ||
+                        clips.find((c) => c.type === 'video') ||
+                        clips[0];
+                      if (target) {
+                        addEffectToClip(target.id, fx.type as any);
+                      } else {
+                        showToastBanner('Please place a clip on the timeline first');
+                      }
+                    }}
+                    className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#2e2e2e] cursor-pointer group transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[14px] text-[#1473e6]">
+                        {fx.icon}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-white text-[11px] font-medium">
+                          {fx.name}
+                        </span>
+                        <span className="text-[9px] text-[#777777]">{fx.desc}</span>
+                      </div>
+                    </div>
+                    <button className="px-2 py-0.5 rounded bg-[#1a1a1a] group-hover:bg-[#1473e6] text-[#b0b0b0] group-hover:text-white text-[10px] font-medium border border-[#353535] group-hover:border-transparent transition-colors">
+                      Apply
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Folder 2: Video Transitions */}
+          <div className="flex flex-col bg-[#222222] rounded border border-[#303030] overflow-hidden">
+            <button
+              onClick={() =>
+                setEffectsFolderOpen((prev) => ({
+                  ...prev,
+                  transitions: !prev.transitions,
+                }))
+              }
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#282828] text-[11px] font-semibold text-white hover:bg-[#303030] transition-colors"
+            >
+              <span className="text-[9px] text-[#888888]">
+                {effectsFolderOpen.transitions ? '▼' : '▶'}
+              </span>
+              <span className="material-symbols-outlined text-[14px] text-[#ffb900]">
+                animation
+              </span>
+              <span>Video Transitions (4)</span>
+            </button>
+            {effectsFolderOpen.transitions && (
+              <div className="flex flex-col p-1 gap-0.5">
+                {[
+                  'Cross Dissolve (Standard)',
+                  'Dip to Black',
+                  'Morph Cut (AI Face Blend)',
+                  'Zoom Blur Impact',
+                ].map((tr) => (
+                  <div
+                    key={tr}
+                    onClick={() =>
+                      showToastBanner(`Applied transition "${tr}" at cut point`)
+                    }
+                    className="flex items-center justify-between px-2 py-1 rounded hover:bg-[#2e2e2e] cursor-pointer group text-[11px]"
+                  >
+                    <span className="text-[#d0d0d0]">{tr}</span>
+                    <button className="px-2 py-0.5 rounded bg-[#1a1a1a] group-hover:bg-[#ffb900] group-hover:text-black text-[#888888] text-[10px] font-medium transition-colors">
+                      Apply
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 overflow-y-auto p-3 flex flex-col justify-center relative">
         {filteredAssets.length === 0 ? (
           /* Empty State Matching Real Premiere Pro Screenshot */
@@ -408,6 +599,7 @@ export const MediaBin: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Bottom Bar: List/Grid Toggles & Zoom Slider */}
       <div className="h-7 bg-[#222222] border-t border-[#2d2d2d] px-2 flex items-center justify-between text-[11px] text-[#888888]">

@@ -43,6 +43,24 @@ export interface ClipColorAdjust {
   temperature: number;
 }
 
+export interface ClipEffect {
+  id: string;
+  name: string;
+  type:
+    | 'gaussian_blur'
+    | 'black_and_white'
+    | 'sepia_vintage'
+    | 'invert'
+    | 'cinematic_glow'
+    | 'vignette'
+    | 'warm_sunset'
+    | 'cool_cyan'
+    | 'high_contrast_noir';
+  category: 'video' | 'color' | 'stylize';
+  enabled: boolean;
+  value: number; // 0 to 100
+}
+
 export interface Clip {
   id: string;
   trackId: string;
@@ -60,6 +78,7 @@ export interface Clip {
   speaker?: string;
   transform?: ClipTransform;
   colorAdjust?: ClipColorAdjust;
+  effects?: ClipEffect[];
 }
 
 export interface SilenceCut {
