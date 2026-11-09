@@ -725,7 +725,7 @@ export const useTimelineStore = create<TimelineState>()(
   // Navigation & Tools
   activeTool: 'selection',
   currentTime: 0,
-  duration: 0,
+  duration: 30,
   isPlaying: false,
   playbackRate: 1,
   inPoint: null,
@@ -867,7 +867,8 @@ export const useTimelineStore = create<TimelineState>()(
   setActiveTool: (tool: EditingTool) => set({ activeTool: tool }),
 
   setCurrentTime: (time: number) => {
-    const clamped = Math.max(0, Math.min(get().duration, time));
+    const maxDur = Math.max(30, get().duration);
+    const clamped = Math.max(0, Math.min(maxDur, time));
     // Simulate dynamic audio peak fluctuations based on playback
     const isOverAudio = get().clips.some(
       (c) => c.type === 'audio' && clamped >= c.startTime && clamped <= c.startTime + c.duration
@@ -1387,12 +1388,13 @@ export const useTimelineStore = create<TimelineState>()(
       /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(asset.name);
     const targetTrackId = isVisual ? 'v1' : 'a1';
     const clipDuration = asset.duration && asset.duration > 0 ? asset.duration : (isVisual ? 5 : 10);
+    const startT = clips.length === 0 ? 0 : currentTime;
 
     const newClip: Clip = {
       id: `clip-${Date.now()}`,
       trackId: targetTrackId,
       title: asset.name,
-      startTime: currentTime,
+      startTime: startT,
       duration: Math.min(25, clipDuration),
       trimStart: 0,
       trimEnd: Math.min(25, clipDuration),
@@ -1419,7 +1421,7 @@ export const useTimelineStore = create<TimelineState>()(
     });
 
     const updatedClips = [...sanitizedClips, newClip];
-    const newDuration = Math.max(get().duration, currentTime + newClip.duration);
+    const newDuration = Math.max(30, Math.max(...updatedClips.map((c) => c.startTime + c.duration)) + 5);
 
     set({
       clips: updatedClips,

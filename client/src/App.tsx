@@ -42,30 +42,27 @@ export const App: React.FC = () => {
     showToastBanner,
   } = useTimelineStore();
 
-  // Sanitize any existing visual clips that were saved on audio tracks
+  // Sanitize any existing visual clips that were saved on audio tracks & ensure startTime = 0 for single clip
   useEffect(() => {
     const { clips, mediaAssets } = useTimelineStore.getState();
-    const needsFix = clips.some(
-      (c) =>
-        /\.(jpg|jpeg|png|webp|gif|svg|mp4|mov|webm)$/i.test(c.title) &&
-        (c.trackId.startsWith('a') || c.type === 'audio' || !c.mediaUrl)
-    );
-    if (needsFix) {
+    if (clips.length > 0) {
       const fixedClips = clips.map((c) => {
         const isVisual = /\.(jpg|jpeg|png|webp|gif|svg|mp4|mov|webm)$/i.test(c.title);
-        if (isVisual) {
-          const asset = mediaAssets.find((a) => a.name === c.title || a.id === c.id);
-          return {
-            ...c,
-            trackId: 'v1',
-            type: 'video' as const,
-            mediaUrl: c.mediaUrl || asset?.url || asset?.thumbnail,
-            color: '#00e5ff',
-          };
-        }
-        return c;
+        const asset = mediaAssets.find((a) => a.name === c.title || a.id === c.id);
+        const newStartTime = clips.length === 1 ? 0 : c.startTime; // Snap single clip to start of timeline
+        return {
+          ...c,
+          startTime: newStartTime,
+          trackId: isVisual ? 'v1' : c.trackId,
+          type: isVisual ? ('video' as const) : c.type,
+          mediaUrl: c.mediaUrl || asset?.url || asset?.thumbnail,
+          color: isVisual ? '#00e5ff' : c.color,
+        };
       });
-      useTimelineStore.setState({ clips: fixedClips });
+      const maxDur = Math.max(30, Math.max(...fixedClips.map((c) => c.startTime + c.duration)) + 5);
+      useTimelineStore.setState({ clips: fixedClips, duration: maxDur });
+    } else {
+      useTimelineStore.setState({ duration: 30 });
     }
   }, []);
 
@@ -222,7 +219,7 @@ export const App: React.FC = () => {
     toggleSnapping,
   ]);
 
-  // 60 FPS Real-time Playback Loop
+  // 60 FPS Real-time Playback Loop (Continuous frame pump reading direct Zustand state)
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -231,15 +228,17 @@ export const App: React.FC = () => {
       const deltaSec = (now - lastTime) / 1000;
       lastTime = now;
 
-      if (isPlaying && playbackRate !== 0) {
-        const nextTime = currentTime + deltaSec * playbackRate;
-        if (nextTime >= duration) {
-          setCurrentTime(0); // loop
+      const state = useTimelineStore.getState();
+      const maxDur = Math.max(30, state.duration);
+
+      if (state.isPlaying && state.playbackRate !== 0) {
+        let nextTime = state.currentTime + deltaSec * state.playbackRate;
+        if (nextTime >= maxDur) {
+          nextTime = 0; // loop back to 0
         } else if (nextTime < 0) {
-          setCurrentTime(duration);
-        } else {
-          setCurrentTime(nextTime);
+          nextTime = maxDur;
         }
+        state.setCurrentTime(nextTime);
       }
 
       animId = requestAnimationFrame(renderLoop);
@@ -247,7 +246,7 @@ export const App: React.FC = () => {
 
     animId = requestAnimationFrame(renderLoop);
     return () => cancelAnimationFrame(animId);
-  }, [isPlaying, playbackRate, currentTime, duration, setCurrentTime]);
+  }, []);
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#181818] text-[#e1e1e1] font-sans">

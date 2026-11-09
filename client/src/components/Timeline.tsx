@@ -48,7 +48,8 @@ export const Timeline: React.FC = () => {
     const rect = timelineContainerRef.current.getBoundingClientRect();
     const scrollLeft = timelineContainerRef.current.scrollLeft;
     const mouseX = e.clientX - rect.left + scrollLeft - 140;
-    let newTime = Math.max(0, Math.min(duration, pixelsToTime(mouseX)));
+    const maxDur = Math.max(30, duration);
+    let newTime = Math.max(0, Math.min(maxDur, pixelsToTime(mouseX)));
 
     if (snappingEnabled) {
       const snapPoints = [
@@ -274,7 +275,10 @@ export const Timeline: React.FC = () => {
             >
               {/* Ruler Bar */}
               <div
-                onMouseDown={() => setIsScrubbing(true)}
+                onMouseDown={(e) => {
+                  setIsScrubbing(true);
+                  updatePlayheadFromMouseEvent(e);
+                }}
                 className="h-6 bg-[#222222] border-b border-[#2d2d2d] relative cursor-pointer"
               >
                 {Array.from({ length: Math.ceil(duration / 2) }).map((_, i) => (
