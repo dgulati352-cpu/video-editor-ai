@@ -25,6 +25,7 @@ export interface Track {
   isLocked: boolean;
   isSyncLocked: boolean;
   volumeDb: number;
+  color?: string;
 }
 
 export interface Clip {
@@ -41,6 +42,7 @@ export interface Clip {
   type: 'video' | 'audio' | 'subtitle';
   mediaUrl?: string;
   hasAiAnalysis?: boolean;
+  speaker?: string;
 }
 
 export interface SilenceCut {
@@ -121,6 +123,38 @@ export interface ExportConfig {
   isBatchQueueOpen: boolean;
 }
 
+export interface BatchRenderJob {
+  id: string;
+  name: string;
+  preset: string;
+  resolution: string;
+  format: string;
+  progress: number;
+  status: 'queued' | 'rendering' | 'completed' | 'paused' | 'failed';
+  fps: number;
+  eta: string;
+  outputPath: string;
+  fileSizeMb: number;
+}
+
+export interface TransitionItem {
+  id: string;
+  name: string;
+  durationSec: number;
+  alignment: 'center' | 'start' | 'end';
+  reverse: boolean;
+  type: 'cross_dissolve' | 'dip_to_black' | 'morph_cut' | 'zoom_blur';
+}
+
+export interface EffectItem {
+  id: string;
+  name: string;
+  category: 'video' | 'audio' | 'lut';
+  applied: boolean;
+  paramName?: string;
+  paramValue?: number;
+}
+
 export interface ProjectManifest {
   id: string;
   name: string;
@@ -130,4 +164,5 @@ export interface ProjectManifest {
   colorSpace: string;
   template: string;
   updatedAt: string;
+  sizeGb?: number;
 }
