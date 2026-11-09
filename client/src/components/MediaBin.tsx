@@ -278,7 +278,17 @@ export const MediaBin: React.FC = () => {
               return (
                 <div
                   key={asset.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', asset.id);
+                    e.dataTransfer.effectAllowed = 'copyMove';
+                  }}
                   onClick={() => handleInsertClip(asset)}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setSourceAssetId(asset.id);
+                    showToastBanner(`Loaded "${asset.name}" into Source Monitor`);
+                  }}
                   onMouseMove={(e) => handleHoverScrub(e, asset.id, asset.duration)}
                   onMouseLeave={() =>
                     setHoverScrubMap((prev) => {
@@ -288,7 +298,7 @@ export const MediaBin: React.FC = () => {
                     })
                   }
                   className="group relative bg-[#262626] hover:bg-[#2e2e2e] border border-[#333333] hover:border-[#1473e6] rounded-[3px] overflow-hidden cursor-pointer transition-all flex flex-col"
-                  title="Click to insert clip into timeline"
+                  title="Click to insert on timeline • Double-click for Source Monitor • Drag to track"
                 >
                   <div className="aspect-[16/9] w-full bg-black relative overflow-hidden flex items-center justify-center">
                     {asset.thumbnail ? (
@@ -340,7 +350,17 @@ export const MediaBin: React.FC = () => {
             {filteredAssets.map((asset) => (
               <div
                 key={asset.id}
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', asset.id);
+                  e.dataTransfer.effectAllowed = 'copyMove';
+                }}
                 onClick={() => handleInsertClip(asset)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setSourceAssetId(asset.id);
+                  showToastBanner(`Loaded "${asset.name}" into Source Monitor`);
+                }}
                 className="group flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#2a2a2a] cursor-pointer text-[11px] border-b border-[#2d2d2d]"
               >
                 <div className="flex items-center gap-2 truncate">

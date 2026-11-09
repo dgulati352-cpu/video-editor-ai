@@ -6,6 +6,8 @@ import {
   EditingTool,
   Track,
   Clip,
+  ClipTransform,
+  ClipColorAdjust,
   SilenceCut,
   SilenceRemovalState,
   TranscriptItem,
@@ -40,6 +42,8 @@ interface TimelineState {
   currentTime: number; // in seconds
   duration: number; // in seconds
   isPlaying: boolean;
+  isLooping: boolean;
+  toggleLooping: () => void;
   playbackRate: number; // 1 = 1x, -1 = reverse, 2 = 2x
   inPoint: number | null;
   outPoint: number | null;
@@ -123,7 +127,13 @@ interface TimelineState {
   selectClip: (clipId: string | null) => void;
   moveClip: (clipId: string, newStartTime: number, newTrackId?: string) => void;
   splitClipAtPlayhead: () => void;
+  splitClipAt: (clipId: string, splitTime: number) => void;
+  updateClipDuration: (clipId: string, newDuration: number, newStartTime?: number) => void;
+  updateClipTransform: (clipId: string, transform: Partial<ClipTransform>) => void;
+  updateClipColorAdjust: (clipId: string, color: Partial<ClipColorAdjust>) => void;
   deleteSelectedClip: () => void;
+  insertAssetAtTrackAndTime: (assetId: string, trackId: string, time: number) => void;
+  addTitleClip: (titleText?: string) => void;
 
   // Silence Removal Actions
   setSilenceThreshold: (db: number) => void;
@@ -727,6 +737,11 @@ export const useTimelineStore = create<TimelineState>()(
   currentTime: 0,
   duration: 0,
   isPlaying: false,
+  isLooping: false,
+  toggleLooping: () => {
+    set((state) => ({ isLooping: !state.isLooping }));
+    get().showToastBanner(get().isLooping ? 'Loop Playback Enabled' : 'Loop Playback Disabled');
+  },
   playbackRate: 1,
   inPoint: null,
   outPoint: null,
@@ -1044,6 +1059,168 @@ export const useTimelineStore = create<TimelineState>()(
       isPlaying: remainingClips.length === 0 ? false : get().isPlaying,
     });
     get().showToastBanner('Deleted selected clip');
+  },
+
+  splitClipAt: (clipId: string, splitTime: number) => {
+    const { clips } = get();
+    const targetClip = clips.find((c) => c.id === clipId);
+    if (!targetClip) return;
+    if (splitTime <= targetClip.startTime + 0.05 || splitTime >= targetClip.startTime + targetClip.duration - 0.05) return;
+
+    get().pushHistorySnapshot();
+    const firstDuration = splitTime - targetClip.startTime;
+    const secondDuration = targetClip.duration - firstDuration;
+
+    const firstHalf: Clip = {
+      ...targetClip,
+      duration: firstDuration,
+      trimEnd: targetClip.trimStart + firstDuration,
+    };
+
+    const secondHalf: Clip = {
+      ...targetClip,
+      id: `${targetClip.id}_cut_${Date.now()}`,
+      startTime: splitTime,
+      duration: secondDuration,
+      trimStart: targetClip.trimStart + firstDuration,
+    };
+
+    set((state) => ({
+      clips: state.clips.map((c) => (c.id === targetClip.id ? firstHalf : c)).concat(secondHalf),
+      selectedClipId: secondHalf.id,
+    }));
+    get().showToastBanner(`Razor Cut clip at ${splitTime.toFixed(2)}s`);
+  },
+
+  updateClipDuration: (clipId: string, newDuration: number, newStartTime?: number) => {
+    get().pushHistorySnapshot();
+    const updatedClips = get().clips.map((c) => {
+      if (c.id !== clipId) return c;
+      const sTime = newStartTime !== undefined ? Math.max(0, newStartTime) : c.startTime;
+      const dur = Math.max(0.2, newDuration);
+      return {
+        ...c,
+        startTime: sTime,
+        duration: dur,
+        trimEnd: c.trimStart + dur,
+      };
+    });
+    const seqEnd =
+      updatedClips.length > 0
+        ? Math.max(...updatedClips.map((c) => c.startTime + c.duration))
+        : 0;
+    set({ clips: updatedClips, duration: seqEnd });
+  },
+
+  updateClipTransform: (clipId: string, transform: Partial<ClipTransform>) => {
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? {
+              ...c,
+              transform: {
+                positionX: 0,
+                positionY: 0,
+                scale: 100,
+                rotation: 0,
+                opacity: 100,
+                ...c.transform,
+                ...transform,
+              },
+            }
+          : c
+      ),
+    }));
+  },
+
+  updateClipColorAdjust: (clipId: string, color: Partial<ClipColorAdjust>) => {
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? {
+              ...c,
+              colorAdjust: {
+                exposure: 0,
+                contrast: 0,
+                saturation: 100,
+                temperature: 0,
+                ...c.colorAdjust,
+                ...color,
+              },
+            }
+          : c
+      ),
+    }));
+  },
+
+  insertAssetAtTrackAndTime: (assetId: string, trackId: string, time: number) => {
+    const { mediaAssets, clips } = get();
+    const asset = mediaAssets.find((a) => a.id === assetId);
+    if (!asset) return;
+
+    get().pushHistorySnapshot();
+    const isVisual =
+      asset.type === 'video' ||
+      asset.type === 'image' ||
+      /\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif|svg)$/i.test(asset.name);
+    const clipDuration = asset.duration && asset.duration > 0 ? asset.duration : (isVisual ? 5 : 10);
+    const startT = Math.max(0, time);
+
+    const newClip: Clip = {
+      id: `clip-${Date.now()}`,
+      trackId: trackId || (isVisual ? 'v1' : 'a1'),
+      title: asset.name,
+      startTime: startT,
+      duration: clipDuration,
+      trimStart: 0,
+      trimEnd: clipDuration,
+      color: isVisual ? '#00e5ff' : '#10b981',
+      speed: 1,
+      volumeDb: 0,
+      type: isVisual ? 'video' : 'audio',
+      mediaUrl: asset.url || asset.thumbnail,
+      hasAiAnalysis: true,
+      transform: { positionX: 0, positionY: 0, scale: 100, rotation: 0, opacity: 100 },
+      colorAdjust: { exposure: 0, contrast: 0, saturation: 100, temperature: 0 },
+    };
+
+    const updatedClips = [...clips, newClip];
+    const sequenceEnd = Math.max(...updatedClips.map((c) => c.startTime + c.duration));
+    set({
+      clips: updatedClips,
+      selectedClipId: newClip.id,
+      sourceAssetId: asset.id,
+      duration: sequenceEnd,
+    });
+    get().showToastBanner(`Placed "${asset.name}" on ${newClip.trackId.toUpperCase()} at ${startT.toFixed(1)}s`);
+  },
+
+  addTitleClip: (titleText = 'Title Card') => {
+    get().pushHistorySnapshot();
+    const { currentTime, clips } = get();
+    const titleClip: Clip = {
+      id: `title-${Date.now()}`,
+      trackId: 'v2',
+      title: titleText,
+      startTime: currentTime,
+      duration: 5,
+      trimStart: 0,
+      trimEnd: 5,
+      color: '#ec4899',
+      speed: 1,
+      volumeDb: 0,
+      type: 'video',
+      transform: { positionX: 0, positionY: 0, scale: 100, rotation: 0, opacity: 100 },
+      colorAdjust: { exposure: 0, contrast: 0, saturation: 100, temperature: 0 },
+    };
+    const updatedClips = [...clips, titleClip];
+    const sequenceEnd = Math.max(...updatedClips.map((c) => c.startTime + c.duration));
+    set({
+      clips: updatedClips,
+      selectedClipId: titleClip.id,
+      duration: sequenceEnd,
+    });
+    get().showToastBanner(`Added Title "${titleText}" on V2`);
   },
 
   // Silence Removal Actions

@@ -242,10 +242,14 @@ export const App: React.FC = () => {
         } else {
           const nextTime = state.currentTime + deltaSec * state.playbackRate;
 
-          // When playhead reaches or exceeds the end of footage, stop immediately!
+          // When playhead reaches or exceeds the end of footage:
           if (nextTime >= sequenceEnd) {
-            state.setCurrentTime(sequenceEnd);
-            useTimelineStore.setState({ isPlaying: false, playbackRate: 1 });
+            if (state.isLooping) {
+              state.setCurrentTime(0);
+            } else {
+              state.setCurrentTime(sequenceEnd);
+              useTimelineStore.setState({ isPlaying: false, playbackRate: 1 });
+            }
           } else if (nextTime < 0) {
             state.setCurrentTime(0);
             useTimelineStore.setState({ isPlaying: false, playbackRate: 1 });

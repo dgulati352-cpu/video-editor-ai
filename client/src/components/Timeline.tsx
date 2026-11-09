@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useTimelineStore } from '../state/timelineStore';
-import { Track, Clip, SilenceCut } from '../types';
-import { secondsToSMPTE, formatDuration } from '../utils/timecode';
+import { Track, Clip } from '../types';
+import { secondsToSMPTE } from '../utils/timecode';
 
 export const Timeline: React.FC = () => {
   const {
@@ -17,14 +17,15 @@ export const Timeline: React.FC = () => {
     moveClip,
     activeTool,
     splitClipAtPlayhead,
-    deleteSelectedClip,
+    splitClipAt,
+    updateClipDuration,
+    insertAssetAtTrackAndTime,
+    addTitleClip,
     inPoint,
     outPoint,
-    silenceState,
     toggleMute,
     toggleSolo,
     toggleLock,
-    toggleSyncLock,
     audioPeakL,
     audioPeakR,
     snappingEnabled,
@@ -35,9 +36,18 @@ export const Timeline: React.FC = () => {
 
   const timelineContainerRef = useRef<HTMLDivElement | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
+
+  // Moving clips
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
   const [dragStartX, setDragStartX] = useState<number>(0);
   const [clipOriginalStartTime, setClipOriginalStartTime] = useState<number>(0);
+
+  // Trimming clips (Left / Right edge drag)
+  const [trimmingClipId, setTrimmingClipId] = useState<string | null>(null);
+  const [trimEdge, setTrimEdge] = useState<'left' | 'right' | null>(null);
+  const [trimStartX, setTrimStartX] = useState<number>(0);
+  const [trimOrigStart, setTrimOrigStart] = useState<number>(0);
+  const [trimOrigDur, setTrimOrigDur] = useState<number>(0);
 
   // Time conversion
   const timeToPixels = (time: number) => time * timelineZoom;
@@ -51,7 +61,7 @@ export const Timeline: React.FC = () => {
     if (!timelineContainerRef.current) return;
     const rect = timelineContainerRef.current.getBoundingClientRect();
     const scrollLeft = timelineContainerRef.current.scrollLeft;
-    const mouseX = e.clientX - rect.left + scrollLeft - 140;
+    const mouseX = e.clientX - rect.left + scrollLeft - 144;
     const maxDur = sequenceEnd > 0 ? sequenceEnd : Math.max(30, duration);
     let newTime = Math.max(0, Math.min(maxDur, pixelsToTime(mouseX)));
 
@@ -76,11 +86,26 @@ export const Timeline: React.FC = () => {
     setCurrentTime(newTime);
   };
 
+  // Mouse move / up listeners for dragging & trimming
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isScrubbing) {
         updatePlayheadFromMouseEvent(e);
+      } else if (trimmingClipId && trimEdge) {
+        // Trimming clip left or right edge
+        const deltaPx = e.clientX - trimStartX;
+        const deltaTime = pixelsToTime(deltaPx);
+
+        if (trimEdge === 'right') {
+          const newDur = Math.max(0.2, trimOrigDur + deltaTime);
+          updateClipDuration(trimmingClipId, newDur);
+        } else if (trimEdge === 'left') {
+          const newStart = Math.max(0, trimOrigStart + deltaTime);
+          const newDur = Math.max(0.2, trimOrigDur - deltaTime);
+          updateClipDuration(trimmingClipId, newDur, newStart);
+        }
       } else if (draggingClipId) {
+        // Moving clip
         const deltaPx = e.clientX - dragStartX;
         const deltaTime = pixelsToTime(deltaPx);
         const newStartTime = Math.max(0, clipOriginalStartTime + deltaTime);
@@ -91,6 +116,8 @@ export const Timeline: React.FC = () => {
     const handleMouseUp = () => {
       setIsScrubbing(false);
       setDraggingClipId(null);
+      setTrimmingClipId(null);
+      setTrimEdge(null);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -99,14 +126,30 @@ export const Timeline: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isScrubbing, draggingClipId, dragStartX, clipOriginalStartTime, timelineZoom]);
+  }, [
+    isScrubbing,
+    draggingClipId,
+    dragStartX,
+    clipOriginalStartTime,
+    trimmingClipId,
+    trimEdge,
+    trimStartX,
+    trimOrigStart,
+    trimOrigDur,
+    timelineZoom,
+  ]);
 
-  const handleClipMouseDown = (e: React.MouseEvent, clip: Clip) => {
+  // Click on clip (Razor split or Select & Move)
+  const handleClipMouseDown = (e: React.MouseEvent<HTMLDivElement>, clip: Clip) => {
     e.stopPropagation();
     selectClip(clip.id);
 
+    // Razor Tool active: split right at mouse cursor timestamp
     if (activeTool === 'razor_cut') {
-      splitClipAtPlayhead();
+      const clipRect = e.currentTarget.getBoundingClientRect();
+      const clickOffsetPx = e.clientX - clipRect.left;
+      const clickTime = clip.startTime + pixelsToTime(clickOffsetPx);
+      splitClipAt(clip.id, clickTime);
       return;
     }
 
@@ -115,7 +158,40 @@ export const Timeline: React.FC = () => {
     setClipOriginalStartTime(clip.startTime);
   };
 
+  // Trim handle start
+  const handleTrimStart = (
+    e: React.MouseEvent,
+    clip: Clip,
+    edge: 'left' | 'right'
+  ) => {
+    e.stopPropagation();
+    selectClip(clip.id);
+    setTrimmingClipId(clip.id);
+    setTrimEdge(edge);
+    setTrimStartX(e.clientX);
+    setTrimOrigStart(clip.startTime);
+    setTrimOrigDur(clip.duration);
+  };
+
+  // Drop media asset directly from Project Bin onto specific track
+  const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
+    e.preventDefault();
+    const assetId = e.dataTransfer.getData('text/plain');
+    if (!assetId || !timelineContainerRef.current) return;
+
+    const rect = timelineContainerRef.current.getBoundingClientRect();
+    const scrollLeft = timelineContainerRef.current.scrollLeft;
+    const mouseX = e.clientX - rect.left + scrollLeft - 144;
+    const dropTime = Math.max(0, pixelsToTime(mouseX));
+
+    insertAssetAtTrackAndTime(assetId, trackId, dropTime);
+  };
+
   const hasClips = clips.length > 0;
+  const canvasWidth = Math.max(
+    1400,
+    timeToPixels(Math.max(sequenceEnd + 15, 60))
+  );
 
   return (
     <div className="flex flex-col h-full bg-[#181818] text-xs select-none overflow-hidden">
@@ -143,12 +219,10 @@ export const Timeline: React.FC = () => {
             {secondsToSMPTE(currentTime, frameRate)}
           </span>
 
-          <div className="h-3 w-[1px] bg-[#353535]" />
-
-          {/* Snap Magnet Icon */}
+          {/* Horseshoe Magnet Snap Tool Icon */}
           <button
             onClick={toggleSnapping}
-            className={`p-1 rounded ${
+            className={`p-1 rounded transition-colors ${
               snappingEnabled ? 'text-[#1473e6]' : 'text-[#888888] hover:text-white'
             }`}
             title="Snap in Timeline (S)"
@@ -190,10 +264,10 @@ export const Timeline: React.FC = () => {
           <input
             type="range"
             min="20"
-            max="120"
+            max="140"
             value={timelineZoom}
             onChange={(e) => setTimelineZoom(Number(e.target.value))}
-            className="w-20 h-1 bg-[#353535] rounded appearance-none accent-[#1473e6] cursor-pointer"
+            className="w-24 h-1 bg-[#353535] rounded appearance-none accent-[#1473e6] cursor-pointer"
           />
         </div>
       </div>
@@ -211,25 +285,29 @@ export const Timeline: React.FC = () => {
             ref={timelineContainerRef}
             className="flex-1 overflow-x-auto overflow-y-auto relative flex bg-[#141414]"
           >
-            {/* Track Headers Column (Fixed 140px width) */}
+            {/* Track Headers Column (Fixed 144px width) */}
             <div className="w-36 sticky left-0 z-20 bg-[#1e1e1e] border-r border-[#2d2d2d] flex flex-col shrink-0">
               {/* Top Ruler Placeholder */}
               <div className="h-6 bg-[#222222] border-b border-[#2d2d2d] px-2 flex items-center text-[10px] text-[#888888]">
                 <span>TRACKS</span>
               </div>
 
-              {/* Track Headers */}
+              {/* Track List Headers */}
               {tracks.map((track) => (
                 <div
                   key={track.id}
-                  className="h-12 border-b border-[#282828] flex items-center justify-between px-2 bg-[#202020] hover:bg-[#252525] transition-colors"
+                  className="h-12 border-b border-[#2d2d2d] px-2 flex items-center justify-between bg-[#1f1f1f]"
                 >
                   <div className="flex items-center gap-1.5 truncate">
                     <span
-                      className="w-1.5 h-4 rounded-[1px] shrink-0"
-                      style={{ backgroundColor: track.color || '#1473e6' }}
-                    />
-                    <span className="font-medium text-[11px] text-[#e1e1e1] truncate" title={track.name}>
+                      className={`font-semibold text-[10px] font-mono ${
+                        track.type === 'video'
+                          ? 'text-[#00e5ff]'
+                          : track.type === 'subtitle'
+                          ? 'text-[#eab308]'
+                          : 'text-[#10b981]'
+                      }`}
+                    >
                       {track.name}
                     </span>
                   </div>
@@ -273,12 +351,10 @@ export const Timeline: React.FC = () => {
               ))}
             </div>
 
-            {/* Time Ruler and Tracks Canvas */}
+            {/* Time Ruler and Continuous Tracks Canvas (100% Authentic Adobe Premiere Pro Look) */}
             <div
               className="relative flex flex-col flex-1"
-              style={{
-                width: `${Math.max(800, timeToPixels(sequenceEnd > 0 ? sequenceEnd : Math.max(30, duration)) + 200)}px`,
-              }}
+              style={{ width: `${canvasWidth}px` }}
             >
               {/* Ruler Bar */}
               <div
@@ -289,10 +365,7 @@ export const Timeline: React.FC = () => {
                 className="h-6 bg-[#222222] border-b border-[#2d2d2d] relative cursor-pointer"
               >
                 {Array.from({
-                  length: Math.max(
-                    2,
-                    Math.ceil((sequenceEnd > 0 ? sequenceEnd : Math.max(30, duration)) / 2) + 1
-                  ),
+                  length: Math.ceil(canvasWidth / (timelineZoom * 2)),
                 }).map((_, i) => (
                   <div
                     key={i}
@@ -310,7 +383,12 @@ export const Timeline: React.FC = () => {
                 return (
                   <div
                     key={track.id}
-                    className="h-12 border-b border-[#242424] relative bg-[#181818]"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }}
+                    onDrop={(e) => handleTrackDrop(e, track.id)}
+                    className="h-12 border-b border-[#242424] relative bg-[#181818] hover:bg-[#1a1a1a] transition-colors"
                   >
                     {trackClips.map((clip) => {
                       const isSelected = selectedClipId === clip.id;
@@ -321,27 +399,52 @@ export const Timeline: React.FC = () => {
                         <div
                           key={clip.id}
                           onMouseDown={(e) => handleClipMouseDown(e, clip)}
-                          className={`absolute top-1 bottom-1 rounded-[2px] px-1.5 flex items-center overflow-hidden cursor-move transition-shadow ${
+                          className={`group absolute top-1 bottom-1 rounded-[2px] px-1.5 flex items-center overflow-hidden transition-shadow select-none ${
+                            activeTool === 'razor_cut'
+                              ? 'cursor-crosshair'
+                              : 'cursor-move'
+                          } ${
                             isSelected
-                              ? 'border-2 border-white shadow-md'
-                              : 'border border-black/40'
+                              ? 'border-2 border-white shadow-lg z-10'
+                              : 'border border-black/40 hover:border-white/50'
                           }`}
                           style={{
                             left: `${leftPx}px`,
-                            width: `${widthPx}px`,
+                            width: `${Math.max(16, widthPx)}px`,
                             backgroundColor: clip.color || '#1473e6',
                           }}
                         >
-                          {clip.mediaUrl && (
+                          {/* Left Trim Handle */}
+                          <div
+                            onMouseDown={(e) => handleTrimStart(e, clip, 'left')}
+                            className="absolute left-0 top-0 bottom-0 w-2 hover:bg-white/50 cursor-ew-resize z-20"
+                            title="Trim In Point"
+                          />
+
+                          {/* Media Thumbnail & FX badge */}
+                          {clip.mediaUrl ? (
                             <img
                               src={clip.mediaUrl}
                               alt=""
-                              className="w-5 h-5 rounded-[1px] object-cover mr-1 shrink-0 pointer-events-none"
+                              className="w-5 h-5 rounded-[1px] object-cover mr-1.5 shrink-0 pointer-events-none"
                             />
+                          ) : (
+                            <span className="px-1 py-0.2 rounded-[1px] bg-[#222222] text-[8px] text-[#00ff88] font-bold border border-[#333333] mr-1 shrink-0 pointer-events-none">
+                              fx
+                            </span>
                           )}
-                          <span className="font-semibold text-white text-[10px] truncate drop-shadow-sm">
+
+                          {/* Clip Title */}
+                          <span className="font-semibold text-white text-[10px] truncate drop-shadow-sm pointer-events-none">
                             {clip.title}
                           </span>
+
+                          {/* Right Trim Handle */}
+                          <div
+                            onMouseDown={(e) => handleTrimStart(e, clip, 'right')}
+                            className="absolute right-0 top-0 bottom-0 w-2 hover:bg-white/50 cursor-ew-resize z-20"
+                            title="Trim Out Point"
+                          />
                         </div>
                       );
                     })}
@@ -349,27 +452,23 @@ export const Timeline: React.FC = () => {
                 );
               })}
 
-              {/* Sequence End Stop Boundary & Inactive Void */}
+              {/* Clean Premiere Pro Sequence End Marker */}
               {sequenceEnd > 0 && (
                 <div
-                  className="absolute top-0 bottom-0 pointer-events-none z-20 border-l border-[#e81123]/90"
+                  className="absolute top-0 pointer-events-none z-20 border-l border-[#1473e6]/80 flex flex-col items-start"
                   style={{
                     left: `${timeToPixels(sequenceEnd)}px`,
-                    right: 0,
                     height: `${tracks.length * 48 + 24}px`,
-                    background:
-                      'repeating-linear-gradient(45deg, rgba(0,0,0,0.5), rgba(0,0,0,0.5) 10px, rgba(20,20,20,0.7) 10px, rgba(20,20,20,0.7) 20px)',
                   }}
                 >
-                  <div className="absolute top-0 left-0 bg-[#e81123] text-white text-[8px] font-mono px-1 py-0.5 tracking-wider uppercase font-bold flex items-center gap-1 shadow">
-                    <span>STOP</span>
-                    <span>•</span>
+                  <div className="bg-[#1473e6] text-white text-[8px] font-mono px-1 py-0.5 rounded-br tracking-wider uppercase font-semibold flex items-center gap-1 shadow-sm">
+                    <span>END</span>
                     <span>{secondsToSMPTE(sequenceEnd, frameRate)}</span>
                   </div>
                 </div>
               )}
 
-              {/* Playhead Line */}
+              {/* Playhead Line with Authentic Inverted Pentagon Blue Head */}
               <div
                 className="absolute top-0 bottom-0 w-[1px] bg-[#1473e6] pointer-events-none z-30"
                 style={{
@@ -377,7 +476,7 @@ export const Timeline: React.FC = () => {
                   height: `${tracks.length * 48 + 24}px`,
                 }}
               >
-                <div className="w-2.5 h-2.5 -ml-[5px] bg-[#1473e6] rotate-45" />
+                <div className="w-2.5 h-2.5 -ml-[5px] bg-[#1473e6] rotate-45 shadow-md" />
               </div>
             </div>
           </div>

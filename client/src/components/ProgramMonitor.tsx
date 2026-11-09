@@ -69,6 +69,28 @@ export const ProgramMonitor: React.FC = () => {
     }
   }, [currentTime, isPlaying, activeClip, isVideo]);
 
+  const { isLooping, toggleLooping } = useTimelineStore();
+
+  const clipTransform = activeClip?.transform;
+  const clipColor = activeClip?.colorAdjust;
+
+  const posX = clipTransform?.positionX ?? 0;
+  const posY = clipTransform?.positionY ?? 0;
+  const scale = clipTransform?.scale ?? 100;
+  const rotation = clipTransform?.rotation ?? 0;
+  const opacity = (clipTransform?.opacity ?? 100) / 100;
+
+  const exposure = clipColor?.exposure ?? 0;
+  const contrast = clipColor?.contrast ?? 0;
+  const saturation = clipColor?.saturation ?? 100;
+
+  const visualStyle: React.CSSProperties = {
+    transform: `translate(${posX}px, ${posY}px) scale(${scale / 100}) rotate(${rotation}deg)`,
+    opacity,
+    filter: `brightness(${1 + exposure * 0.15}) contrast(${1 + contrast * 0.02}) saturate(${saturation / 100})`,
+    transition: 'transform 0.05s ease-out',
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#1e1e1e] border-r border-[#303030] text-xs select-none overflow-hidden">
       {/* Monitor Header Tab: Program: (no sequences) ≡ */}
@@ -89,6 +111,7 @@ export const ProgramMonitor: React.FC = () => {
               <video
                 ref={videoRef}
                 src={mediaUrl}
+                style={visualStyle}
                 className="max-w-full max-h-full object-contain pointer-events-none"
                 playsInline
                 muted
@@ -97,6 +120,7 @@ export const ProgramMonitor: React.FC = () => {
               <img
                 src={mediaUrl}
                 alt={activeClip.title}
+                style={visualStyle}
                 className="max-w-full max-h-full object-contain select-none shadow-lg"
               />
             )
@@ -127,7 +151,7 @@ export const ProgramMonitor: React.FC = () => {
           {secondsToSMPTE(currentTime, frameRate)}
         </span>
 
-        {/* Center Transport Controls ({, }, |<, <, >, >|, +) */}
+        {/* Center Transport Controls ({, }, |<, <, >, >|, Loop, +) */}
         <div className="flex items-center gap-2">
           {/* Mark In { */}
           <button
@@ -168,7 +192,7 @@ export const ProgramMonitor: React.FC = () => {
           {/* Play / Pause ▶ */}
           <button
             onClick={togglePlayPause}
-            className="hover:text-white text-[12px] px-1"
+            className="hover:text-white text-[12px] px-1.5 py-0.5 rounded hover:bg-[#333333] transition-colors"
             title="Play / Stop (Space)"
           >
             {isPlaying ? '⏸' : '▶'}
@@ -181,6 +205,17 @@ export const ProgramMonitor: React.FC = () => {
             title="Step Forward 1 Frame (Right Arrow)"
           >
             ▶|
+          </button>
+
+          {/* Loop Playback 🔁 */}
+          <button
+            onClick={toggleLooping}
+            className={`text-[12px] px-1 transition-colors ${
+              isLooping ? 'text-[#1473e6] font-bold' : 'text-[#888888] hover:text-white'
+            }`}
+            title={`Loop Playback (Ctrl+L): ${isLooping ? 'ON' : 'OFF'}`}
+          >
+            🔁
           </button>
 
           {/* Button Editor + */}

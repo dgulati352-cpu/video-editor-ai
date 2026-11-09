@@ -3,7 +3,7 @@ import { useTimelineStore } from '../state/timelineStore';
 import { secondsToSMPTE } from '../utils/timecode';
 
 export const SourceMonitor: React.FC = () => {
-  const { mediaAssets, frameRate, sourceAssetId } = useTimelineStore();
+  const { mediaAssets, frameRate, sourceAssetId, insertAssetAtPlayhead } = useTimelineStore();
   const [isPlaying, setIsPlaying] = useState(false);
   const [sourceTime, setSourceTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -132,6 +132,24 @@ export const SourceMonitor: React.FC = () => {
             title="Step Forward 1 Frame (Right Arrow)"
           >
             ▶|
+          </button>
+
+          {/* Insert (,) */}
+          <button
+            onClick={() => activeAsset && insertAssetAtPlayhead(activeAsset.id)}
+            className="hover:text-[#1473e6] text-[11px] px-1 font-bold flex items-center gap-0.5"
+            title="Insert into Sequence (,)"
+          >
+            <span className="material-symbols-outlined text-[13px]">input</span>
+          </button>
+
+          {/* Overwrite (.) */}
+          <button
+            onClick={() => activeAsset && insertAssetAtPlayhead(activeAsset.id)}
+            className="hover:text-[#1473e6] text-[11px] px-1 font-bold flex items-center gap-0.5"
+            title="Overwrite into Sequence (.)"
+          >
+            <span className="material-symbols-outlined text-[13px]">drive_file_move</span>
           </button>
 
           {/* Button Editor + */}

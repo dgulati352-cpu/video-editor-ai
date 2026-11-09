@@ -28,6 +28,21 @@ export interface Track {
   color?: string;
 }
 
+export interface ClipTransform {
+  positionX: number;
+  positionY: number;
+  scale: number;
+  rotation: number;
+  opacity: number;
+}
+
+export interface ClipColorAdjust {
+  exposure: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+}
+
 export interface Clip {
   id: string;
   trackId: string;
@@ -43,6 +58,8 @@ export interface Clip {
   mediaUrl?: string;
   hasAiAnalysis?: boolean;
   speaker?: string;
+  transform?: ClipTransform;
+  colorAdjust?: ClipColorAdjust;
 }
 
 export interface SilenceCut {

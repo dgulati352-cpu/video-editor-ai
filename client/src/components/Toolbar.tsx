@@ -21,12 +21,19 @@ const TOOLS: ToolDef[] = [
 ];
 
 export const Toolbar: React.FC = () => {
-  const { activeTool, setActiveTool, splitClipAtPlayhead, showToastBanner } = useTimelineStore();
+  const { activeTool, setActiveTool, addTitleClip, showToastBanner } = useTimelineStore();
 
   const handleToolClick = (tool: ToolDef) => {
+    if (tool.id === 'zoom') {
+      addTitleClip('New Title Card');
+      showToastBanner('Added Title Card overlay on Track V2');
+      return;
+    }
     setActiveTool(tool.id);
     if (tool.id === 'razor_cut') {
-      showToastBanner('Razor Tool selected (C): Click clip or use Ctrl+K to split');
+      showToastBanner('Razor Tool selected (C): Click on clip or use Ctrl+K to split');
+    } else if (tool.id === 'selection') {
+      showToastBanner('Selection Tool (V): Move or trim clips');
     }
   };
 
